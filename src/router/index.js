@@ -91,6 +91,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'super_admin' }
   },
   {
+    path: '/dashboard/akun',
+    name: 'KelolaAkun',
+    component: () => import('@/views/super-admin/KelolaAkunView.vue'),
+    meta: { requiresAuth: true, role: 'super_admin' }
+  },
+  {
     path: '/dashboard/approval',
     name: 'ApprovalAnggota',
     component: () => import('@/views/super-admin/ApprovalAnggotaView.vue'),

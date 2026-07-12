@@ -57,6 +57,7 @@ const menuMap = {
     { label: 'Dashboard', icon: icons.dashboard, route: '/dashboard' },
     { label: 'Murabbi', icon: icons.user, route: '/dashboard/murabbi' },
     { label: 'Kelompok', icon: icons.group, route: '/dashboard/kelompok' },
+    { label: 'Akun', icon: icons.user, route: '/dashboard/akun' },
     { label: 'Approval', icon: icons.document, route: '/dashboard/approval' }
   ]
 }
@@ -65,11 +66,10 @@ const menu = computed(() => menuMap[role.value] || [])
 
 function isActive(itemRoute) {
   if (itemRoute === '/dashboard') {
-    return route.path === '/dashboard' || (route.path.startsWith('/dashboard/') && !route.path.includes('murabbi') && !route.path.includes('kelompok') && !route.path.includes('approval') && !route.path.includes('laporan') && !route.path.includes('pengaturan'))
+    return route.path === '/dashboard' || (route.path.startsWith('/dashboard/') && !route.path.includes('murabbi') && !route.path.includes('kelompok') && !route.path.includes('akun') && !route.path.includes('approval') && !route.path.includes('laporan') && !route.path.includes('pengaturan'))
   }
-  if (itemRoute === '/dashboard/approval') {
-    return route.path === '/dashboard/approval'
-  }
+  if (itemRoute === '/dashboard/akun') return route.path === '/dashboard/akun'
+  if (itemRoute === '/dashboard/approval') return route.path === '/dashboard/approval'
   if (itemRoute === '/dashboard/murabbi' && route.path === '/dashboard/murabbi') return true
   if (itemRoute === '/dashboard/kelompok' && route.path === '/dashboard/kelompok') return true
   return route.path === itemRoute
