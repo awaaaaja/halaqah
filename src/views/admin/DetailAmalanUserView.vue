@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 const route = useRoute()
 const router = useRouter()
@@ -158,6 +160,72 @@ const rawatibLabels = {
   isya: 'Isya'
 }
 
+const exporting = ref(false)
+
+async function exportPDF() {
+  exporting.value = true
+  try {
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = doc.internal.pageSize.getWidth()
+
+    doc.setFontSize(16)
+    doc.setTextColor(22, 163, 74)
+    doc.text('Laporan Amalan Individu', pageWidth / 2, 20, { align: 'center' })
+
+    doc.setFontSize(11)
+    doc.setTextColor(55, 65, 81)
+    doc.text(profile.value?.nama || '-', pageWidth / 2, 28, { align: 'center' })
+
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.text(`NIM: ${profile.value?.nim || '-'}`, pageWidth / 2, 34, { align: 'center' })
+    if (profile.value?.groups?.nama_kelompok) {
+      doc.text(`Kelompok: ${profile.value.groups.nama_kelompok}`, pageWidth / 2, 40, { align: 'center' })
+    }
+    doc.text(`Periode: ${monthLabel.value}`, pageWidth / 2, 46, { align: 'center' })
+
+    const rows = logs.value.map(log => {
+      const score = hitungSkor(log)
+      const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
+      const shalat = wajibFields.map(f => {
+        const m = { tepat_waktu: 'TW', terlambat: 'TL', qadha: 'Q', belum: '-' }
+        return m[log[f]] || '-'
+      }).join('/')
+      return [
+        new Date(log.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        shalat,
+        log.shalat_dhuha ? 'Ya' : 'Tidak',
+        log.jumlah_rakaat || '-',
+        score
+      ]
+    })
+
+    const startY = profile.value?.groups?.nama_kelompok ? 52 : 46
+    doc.autoTable({
+      startY,
+      head: [['Tanggal', 'Subuh/Dzuhur/Ashar/Maghrib/Isya', 'Dhuha', 'Rakaat', 'Skor']],
+      body: rows,
+      headStyles: {
+        fillColor: [22, 163, 74],
+        fontSize: 8
+      },
+      bodyStyles: {
+        fontSize: 7
+      },
+      alternateRowStyles: {
+        fillColor: [240, 253, 244]
+      }
+    })
+
+    doc.save(`amalan-${profile.value?.nama?.replace(/\s+/g, '_') || 'user'}-${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}.pdf`)
+  } catch (e) {
+    console.error('Gagal export PDF:', e)
+    appStore.setError('Gagal mengexport PDF')
+  } finally {
+    exporting.value = false
+  }
+}
+
 async function loadProfile() {
   profileLoading.value = true
   errorMsg.value = ''
@@ -238,15 +306,32 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <button
-      @click="router.push('/monitoring-amalan')"
-      class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-emerald-700 mb-4 transition-colors"
-    >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      Kembali
-    </button>
+    <div class="flex items-center justify-between mb-4">
+      <button
+        @click="router.push('/monitoring-amalan')"
+        class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-emerald-700 transition-colors"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Kembali
+      </button>
+      <button
+        v-if="role === 'super_admin'"
+        @click="exportPDF"
+        :disabled="exporting"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition-all disabled:opacity-50"
+      >
+        <svg v-if="exporting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Export PDF
+      </button>
+    </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-500">
       <svg class="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" fill="none" viewBox="0 0 24 24">
