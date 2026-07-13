@@ -18,9 +18,9 @@ export function useSession() {
     return data
   }
 
-  async function bukaSesi(groupId, judulMateri = '', createdBy = null) {
-    const payload = { group_id: groupId, judul_materi: judulMateri }
-    if (createdBy) payload.created_by = createdBy
+  async function bukaSesi(groupId, judulMateri = '', createdBy) {
+    if (!createdBy) throw new Error('createdBy (profile ID) wajib diisi untuk membuka sesi')
+    const payload = { group_id: groupId, judul_materi: judulMateri, created_by: createdBy }
     const { data, error } = await supabase
       .from('sessions')
       .insert(payload)

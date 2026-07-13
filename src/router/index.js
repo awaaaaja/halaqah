@@ -43,6 +43,66 @@ const routes = [
     meta: { requiresAuth: true, role: 'user' }
   },
   {
+    path: '/quran',
+    name: 'DaftarSurat',
+    component: () => import('@/views/user/quran/DaftarSuratView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/quran/:nomor',
+    name: 'BacaSurat',
+    component: () => import('@/views/user/quran/BacaSuratView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/quran/:nomor/tafsir',
+    name: 'TafsirSurat',
+    component: () => import('@/views/user/quran/TafsirSuratView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/amalan',
+    name: 'AmalanHarian',
+    component: () => import('@/views/user/amalan/AmalanHarianView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/amalan/kalender',
+    name: 'KalenderAmalan',
+    component: () => import('@/views/user/amalan/KalenderAmalanView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/amalan/progress',
+    name: 'ProgressAmalan',
+    component: () => import('@/views/user/amalan/ProgressAmalanView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/catatan',
+    name: 'DaftarCatatan',
+    component: () => import('@/views/user/catatan/DaftarCatatanView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/catatan/tambah',
+    name: 'TambahCatatan',
+    component: () => import('@/views/user/catatan/FormCatatanView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/catatan/:id/edit',
+    name: 'EditCatatan',
+    component: () => import('@/views/user/catatan/FormCatatanView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/catatan/:id',
+    name: 'DetailCatatan',
+    component: () => import('@/views/user/catatan/DetailCatatanView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
     path: '/beranda',
     name: 'Beranda',
     component: () => import('@/views/admin/BerandaView.vue'),
@@ -71,6 +131,18 @@ const routes = [
     name: 'RiwayatSesi',
     component: () => import('@/views/admin/RiwayatSesiView.vue'),
     meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/monitoring-amalan',
+    name: 'MonitoringAmalan',
+    component: () => import('@/views/admin/MonitoringAmalanView.vue'),
+    meta: { requiresAuth: true, role: ['admin', 'super_admin'] }
+  },
+  {
+    path: '/monitoring-amalan/:userId',
+    name: 'DetailAmalanUser',
+    component: () => import('@/views/admin/DetailAmalanUserView.vue'),
+    meta: { requiresAuth: true, role: ['admin', 'super_admin'] }
   },
   {
     path: '/dashboard',
@@ -162,8 +234,11 @@ router.beforeEach(async (to, from, next) => {
       return next(redirectMap[profile.role] || '/login')
     }
 
-    if (to.meta.role && profile.role !== to.meta.role) {
-      return next(redirectMap[profile.role] || '/login')
+    if (to.meta.role) {
+      const allowedRoles = Array.isArray(to.meta.role) ? to.meta.role : [to.meta.role]
+      if (!allowedRoles.includes(profile.role)) {
+        return next(redirectMap[profile.role] || '/login')
+      }
     }
   }
 

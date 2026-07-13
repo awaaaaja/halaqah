@@ -113,7 +113,7 @@ async function handleBukaSesi() {
   if (!adminGroupId.value) return
   bukaLoading.value = true
   try {
-    await bukaSesi(adminGroupId.value, judulMateri.value, authStore.profile?.id)
+    await bukaSesi(adminGroupId.value, judulMateri.value, authStore.profile?.id || authStore.user?.id)
     showToast('Sesi liqa dibuka!')
     showBukaForm.value = false
     judulMateri.value = ''
