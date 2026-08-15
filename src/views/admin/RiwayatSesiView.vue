@@ -33,19 +33,19 @@ async function fetchRiwayatSesi() {
 
   sesiList.value = data || []
 
+  const sessionIds = (data || []).map(s => s.id)
+  const { data: atts } = sessionIds.length
+    ? await supabase.from('attendances').select('status, session_id').in('session_id', sessionIds)
+    : { data: [] }
+
   const summaries = {}
-  await Promise.all((data || []).map(async (s) => {
-    const { data: counts } = await supabase
-      .from('attendances')
-      .select('status')
-      .eq('session_id', s.id)
-    summaries[s.id] = {
-      hadir: (counts || []).filter(a => a.status === 'hadir').length,
-      izin: (counts || []).filter(a => a.status === 'izin').length,
-      alpa: (counts || []).filter(a => a.status === 'alpa').length,
-      total: (counts || []).length
-    }
-  }))
+  ;(atts || []).forEach(a => {
+    const s = summaries[a.session_id] || (summaries[a.session_id] = { hadir: 0, izin: 0, alpa: 0, total: 0 })
+    s.total++
+    if (a.status === 'hadir') s.hadir++
+    else if (a.status === 'izin') s.izin++
+    else s.alpa++
+  })
   summaryMap.value = summaries
   loading.value = false
 }

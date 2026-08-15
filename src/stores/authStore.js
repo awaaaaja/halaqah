@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return
     const { data } = await supabase
       .from('profiles')
-      .select('*, groups(nama_kelompok)')
+      .select('id, nama, nim, prodi, kelas, angkatan, group_id, role, email, no_hp, status_akun, created_at, groups(nama_kelompok)')
       .eq('id', user.value.id)
       .maybeSingle()
     if (data) {
@@ -50,7 +50,14 @@ export const useAuthStore = defineStore('auth', () => {
       email: data.email,
       password: data.password,
       options: {
-        data: { nama: data.nama }
+        data: {
+          nama: data.nama,
+          nim: data.nim || null,
+          prodi: data.prodi || null,
+          kelas: data.kelas || null,
+          angkatan: data.angkatan || null,
+          no_hp: data.no_hp || null
+        }
       }
     })
     if (error) throw error
@@ -63,18 +70,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateProfile(profileData) {
     if (!user.value) return
-    for (let i = 0; i < 3; i++) {
-      const { error } = await supabase
-        .from('profiles')
-        .update(profileData)
-        .eq('id', user.value.id)
-      if (!error) {
-        await fetchProfile()
-        return
-      }
-      if (i < 2) await new Promise(r => setTimeout(r, 600))
-      else throw error
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .update(profileData)
+      .eq('id', user.value.id)
+    if (error) throw error
+    await fetchProfile()
   }
 
   async function logout() {

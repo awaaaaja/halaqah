@@ -185,6 +185,11 @@ const routes = [
     name: 'Pengaturan',
     component: () => import('@/views/super-admin/PengaturanView.vue'),
     meta: { requiresAuth: true, role: 'super_admin' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/views/NotFoundView.vue')
   }
 ]
 

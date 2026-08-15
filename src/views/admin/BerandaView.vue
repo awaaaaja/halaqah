@@ -35,6 +35,24 @@ async function loadRealtimeCount() {
   realtimeCount.value = count || 0
 }
 
+const recentAttendances = ref([])
+
+async function loadRecentAttendances() {
+  if (!sesiAktif.value) { recentAttendances.value = []; return }
+  const { data } = await supabase
+    .from('attendances')
+    .select('user_id, status, waktu_absen, profiles(nama)')
+    .eq('session_id', sesiAktif.value.id)
+    .order('waktu_absen', { ascending: false })
+    .limit(5)
+  recentAttendances.value = data || []
+}
+
+function formatJam(iso) {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
+
 const adminGroupId = computed(() => authStore.profile?.group_id)
 const today = new Date().toISOString().split('T')[0]
 const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
@@ -50,7 +68,10 @@ async function loadData() {
   anggotaCount.value = memberCount || 0
 
   await getSesiAktif(adminGroupId.value)
-  if (sesiAktif.value) await loadRealtimeCount()
+  if (sesiAktif.value) {
+    await loadRealtimeCount()
+    await loadRecentAttendances()
+  }
 
   const { data: riwayat } = await supabase
     .from('sessions')
@@ -141,7 +162,7 @@ async function handleBukaSesi() {
   bukaLoading.value = true
   try {
     await bukaSesi(adminGroupId.value, judulMateri.value, authStore.profile?.id || authStore.user?.id)
-    appStore.showToast('Sesi liqa dibuka!')
+    appStore.showToast('Sesi liqa dibuka')
     showBukaForm.value = false
     judulMateri.value = ''
     sesiDitutup.value = null
@@ -187,6 +208,7 @@ onMounted(() => {
     .channel('attendances-realtime')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendances' }, () => {
       loadRealtimeCount()
+      loadRecentAttendances()
       loadData()
     })
     .subscribe()
@@ -245,7 +267,7 @@ onUnmounted(() => {
       <span>Memuat...</span>
     </div>
 
-    <template v-else>
+    <template v-if="groupInfo && !sesiLoading">
       <!-- ====== STATS ROW ====== -->
       <div v-if="groupInfo" class="grid grid-cols-3 gap-3 mb-5">
         <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm text-center">
@@ -307,6 +329,36 @@ onUnmounted(() => {
             </svg>
             <span>{{ akhiriLoading ? 'Menutup...' : 'Akhiri Sesi' }}</span>
           </button>
+        </div>
+
+        <!-- ====== BARU TERABSEN (realtime) ====== -->
+        <div v-if="recentAttendances.length > 0" class="bg-white rounded-2xl border border-emerald-100 shadow-sm mt-4 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+            <p class="font-bold text-gray-800 text-sm flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Baru Terabsen
+            </p>
+            <span class="text-[11px] text-gray-400">5 terakhir</span>
+          </div>
+          <div class="divide-y divide-gray-50">
+            <div v-for="a in recentAttendances" :key="a.user_id" class="px-4 py-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-[11px] font-bold text-emerald-700 shrink-0">
+                  {{ (a.profiles?.nama || '?').charAt(0) }}
+                </div>
+                <p class="text-sm font-medium text-gray-800 truncate">{{ a.profiles?.nama || '-' }}</p>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 ml-2">
+                <span class="text-[11px] text-gray-400 font-mono">{{ formatJam(a.waktu_absen) }}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize"
+                  :class="a.status === 'hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'izin' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'">
+                  {{ a.status }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

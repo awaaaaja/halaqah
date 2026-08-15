@@ -12,6 +12,7 @@ const stats = ref({ total: 0, hadir: 0, izin: 0, alpa: 0 })
 const anggotaCount = ref(0)
 const lastAttendance = ref(null)
 const activeSessionToday = ref(null)
+const qrToken = ref(null)
 
 const namaKelompok = computed(() => {
   return profile.value?.nama_kelompok || 'Belum ada kelompok'
@@ -26,12 +27,18 @@ onMounted(async () => {
   if (!authStore.user?.id) { loading.value = false; return }
 
   await Promise.all([
+    loadQrToken(),
     loadStats(),
     loadGroupInfo(),
     loadActiveSession()
   ])
   loading.value = false
 })
+
+async function loadQrToken() {
+  const { data } = await supabase.rpc('get_my_qr_token')
+  qrToken.value = data || null
+}
 
 async function loadStats() {
   const { data } = await supabase
@@ -210,7 +217,7 @@ const kehadiranRate = computed(() => {
       </div>
       <QRCard
         v-else
-        :qr-token="profile.qr_token"
+        :qr-token="qrToken"
         :nama="profile.nama"
         :nim="profile.nim"
         :prodi="profile.prodi"

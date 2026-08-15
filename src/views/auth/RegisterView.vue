@@ -31,18 +31,13 @@ async function handleRegister() {
     await authStore.register({
       email: form.value.email,
       password: form.value.password,
-      nama: form.value.nama
+      nama: form.value.nama,
+      nim: form.value.nim,
+      prodi: form.value.prodi,
+      kelas: form.value.kelas,
+      angkatan: form.value.angkatan,
+      no_hp: form.value.no_hp
     })
-
-    if (authStore.user) {
-      await authStore.updateProfile({
-        nim: form.value.nim,
-        prodi: form.value.prodi,
-        kelas: form.value.kelas,
-        angkatan: form.value.angkatan,
-        no_hp: form.value.no_hp
-      })
-    }
 
     router.push('/pending')
   } catch (e) {
@@ -62,7 +57,7 @@ async function handleRegister() {
     </div>
 
     <!-- Form -->
-    <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-6 animate-slide-up">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 animate-slide-up">
       <form @submit.prevent="handleRegister" class="space-y-3.5">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>

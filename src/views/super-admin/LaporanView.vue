@@ -30,7 +30,15 @@ const filteredData = computed(() => {
   let d = allData.value
   if (filterGroup.value) d = d.filter(i => i.group_id === filterGroup.value)
   if (filterStatus.value) {
-    d = d.filter(i => i.anggota.some(a => a.status === filterStatus.value))
+    d = d
+      .filter(i => i.anggota.some(a => a.status === filterStatus.value))
+      .map(i => {
+        const anggota = i.anggota.filter(a => a.status === filterStatus.value)
+        const hadir = anggota.filter(a => a.status === 'hadir').length
+        const izin = anggota.filter(a => a.status === 'izin').length
+        const alpa = anggota.filter(a => a.status === 'alpa').length
+        return { ...i, anggota, hadir, izin, alpa, total: anggota.length }
+      })
   }
   return d
 })

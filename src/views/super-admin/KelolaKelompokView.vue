@@ -9,6 +9,7 @@ const admins = ref([])
 const loading = ref(true)
 const showForm = ref(false)
 const editId = ref(null)
+const oldMurabbiId = ref(null)
 const form = ref({ nama_kelompok: '', deskripsi: '', murabbi_id: '' })
 const formLoading = ref(false)
 const deleting = ref(new Set())
@@ -22,12 +23,12 @@ async function loadData() {
   groups.value = gRes.data || []
   admins.value = aRes.data || []
 
-  // Get member counts
-  const counts = await Promise.all((groups.value).map(async (g) => {
-    const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('group_id', g.id).eq('status_akun', 'aktif')
-    return { id: g.id, count: count || 0 }
-  }))
-  const countMap = Object.fromEntries(counts.map(c => [c.id, c.count]))
+  // Get member counts (batched — satu query untuk semua kelompok)
+  const { data: memberRows } = await supabase.from('profiles').select('group_id').eq('status_akun', 'aktif')
+  const countMap = {}
+  ;(memberRows || []).forEach(m => {
+    countMap[m.group_id] = (countMap[m.group_id] || 0) + 1
+  })
   groups.value = groups.value.map(g => ({ ...g, anggota_count: countMap[g.id] || 0 }))
 
   loading.value = false
@@ -35,14 +36,26 @@ async function loadData() {
 
 function openCreate() {
   editId.value = null
+  oldMurabbiId.value = null
   form.value = { nama_kelompok: '', deskripsi: '', murabbi_id: '' }
   showForm.value = true
 }
 
 function openEdit(g) {
   editId.value = g.id
+  oldMurabbiId.value = g.murabbi_id || null
   form.value = { nama_kelompok: g.nama_kelompok, deskripsi: g.deskripsi || '', murabbi_id: g.murabbi_id || '' }
   showForm.value = true
+}
+
+async function syncMurabbiGroup(groupId) {
+  const newMurabbi = form.value.murabbi_id || null
+  if (oldMurabbiId.value && oldMurabbiId.value !== newMurabbi) {
+    await supabase.from('profiles').update({ group_id: null }).eq('id', oldMurabbiId.value).eq('group_id', groupId)
+  }
+  if (newMurabbi) {
+    await supabase.from('profiles').update({ group_id: groupId }).eq('id', newMurabbi)
+  }
 }
 
 async function handleSave() {
@@ -58,10 +71,12 @@ async function handleSave() {
     if (editId.value) {
       const { error } = await supabase.from('groups').update(payload).eq('id', editId.value)
       if (error) throw error
+      await syncMurabbiGroup(editId.value)
       appStore.showToast('Kelompok diperbarui')
     } else {
-      const { error } = await supabase.from('groups').insert(payload)
+      const { data, error } = await supabase.from('groups').insert(payload).select('id').single()
       if (error) throw error
+      await syncMurabbiGroup(data.id)
       appStore.showToast('Kelompok baru dibuat')
     }
     showForm.value = false

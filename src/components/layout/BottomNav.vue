@@ -66,7 +66,9 @@ const menuMap = {
     { label: 'Kelompok', icon: icons.group, route: '/dashboard/kelompok' },
     { label: 'Akun', icon: icons.user, route: '/dashboard/akun' },
     { label: 'Monitoring', icon: icons.monitoring, route: '/monitoring-amalan' },
-    { label: 'Approval', icon: icons.document, route: '/dashboard/approval' }
+    { label: 'Approval', icon: icons.document, route: '/dashboard/approval' },
+    { label: 'Laporan', icon: icons.document, route: '/dashboard/laporan' },
+    { label: 'Pengaturan', icon: icons.settings, route: '/dashboard/pengaturan' }
   ]
 }
 
@@ -168,31 +170,6 @@ async function handleLogout() {
           {{ pendingCount > 99 ? '99+' : pendingCount }}
         </span>
       </router-link>
-
-      <!-- Extra links for super_admin -->
-      <template v-if="role === 'super_admin'">
-        <div class="border-t border-gray-100 my-2"></div>
-        <router-link to="/dashboard/laporan"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-          :class="route.path === '/dashboard/laporan'
-            ? 'bg-brand-50 text-brand-700'
-            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'">
-          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span>Laporan</span>
-        </router-link>
-        <router-link to="/dashboard/pengaturan"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-          :class="route.path === '/dashboard/pengaturan'
-            ? 'bg-brand-50 text-brand-700'
-            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'">
-          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>Pengaturan</span>
-        </router-link>
-      </template>
     </div>
 
     <!-- Profile + Logout (Desktop) -->

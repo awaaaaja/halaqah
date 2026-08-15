@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { hitungSkorHarian as hitungSkor, skorHarianPct, AMALAN_SKOR_MAX } from '@/lib/amalanScore'
 
 export function useAmalan() {
   const logHarian = ref(null)
@@ -83,17 +84,8 @@ export function useAmalan() {
   }
 
   function hitungSkorHarian(log) {
-    if (!log) return { total: 0, max: 25, score: 0, pct: 0 }
-    let score = 0
-    const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
-    wajibFields.forEach(f => {
-      if (log[f] === 'tepat_waktu') score += 4
-      else if (log[f] === 'terlambat') score += 2
-      else if (log[f] === 'qadha') score += 1
-    })
-    if (log.shalat_dhuha) score += 3
-    if (log.jumlah_rakaat) score += Math.min(log.jumlah_rakaat, 2)
-    return { total: score, max: 25, score, pct: Math.round((score / 25) * 100) }
+    const score = hitungSkor(log)
+    return { total: score, max: AMALAN_SKOR_MAX, score, pct: skorHarianPct(score) }
   }
 
   return {

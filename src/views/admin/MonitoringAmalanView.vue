@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { hitungSkorHarian, AMALAN_SKOR_MAX } from '@/lib/amalanScore'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -61,19 +62,6 @@ const filteredUsers = computed(() => {
   }
   return list
 })
-
-function hitungSkor(log) {
-  if (!log) return 0
-  let score = 0
-  const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
-  wajibFields.forEach(f => {
-    if (log[f] === 'tepat_waktu') score += 4
-    else if (log[f] === 'terlambat') score += 2
-    else if (log[f] === 'qadha') score += 1
-  })
-  if (log.shalat_dhuha) score += 3
-  return score
-}
 
 async function loadGroups() {
   const { data } = await supabase.from('groups').select('id, nama_kelompok').order('nama_kelompok')
@@ -134,7 +122,7 @@ async function loadData() {
       let totalTepatWaktu = 0
 
       userLogs.forEach(log => {
-        totalScore += hitungSkor(log)
+        totalScore += hitungSkorHarian(log)
 
         const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
         wajibFields.forEach(f => {
@@ -150,7 +138,7 @@ async function loadData() {
         totalHari,
         rataRata: Math.round(rataRata * 10) / 10,
         konsistensi,
-        maxSkor: 23
+        maxSkor: AMALAN_SKOR_MAX
       }
     })
 

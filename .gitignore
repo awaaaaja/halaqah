@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .vercel
+.env*
+
+# Graphify local artifacts
+graphify-out

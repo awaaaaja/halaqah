@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 
 const stats = ref({
@@ -13,6 +13,12 @@ const groupOverview = ref([])
 const adminActivity = ref([])
 const weeklyTrend = ref([])
 const loading = ref(true)
+const sessionCounts = ref({})
+const showSesiDetail = ref(false)
+const detailSesi = ref(null)
+const detailAttendances = ref([])
+const detailLoading = ref(false)
+let realtimeSub = null
 
 async function loadDashboard() {
   loading.value = true
@@ -31,7 +37,7 @@ async function loadDashboard() {
     supabase.from('groups').select('id', { count: 'exact', head: true }),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user').eq('status_akun', 'aktif'),
-    supabase.from('sessions').select('id, group_id, judul_materi, dibuka_at, created_by, groups(nama_kelompok), profiles!sessions_created_by_fkey(nama)').eq('is_open', true),
+    supabase.from('sessions').select('id, group_id, judul_materi, dibuka_at, created_by, groups(nama_kelompok), profiles!sessions_created_by_fkey(nama)').eq('is_open', true).eq('tanggal', today),
     supabase.from('groups').select('id, nama_kelompok'),
     supabase.from('profiles').select('id, nama, group_id, groups(nama_kelompok)').eq('role', 'admin').order('nama'),
   ])
@@ -50,44 +56,54 @@ async function loadDashboard() {
     dibuka_at: s.dibuka_at,
     murabbi: s.profiles?.nama || '-'
   }))
+  await loadActiveCounts()
 
   const groupData = groupsWithCount || []
-  const groupStats = await Promise.all(groupData.map(async (g) => {
-    const { data: sessions } = await supabase
-      .from('sessions')
-      .select('id')
-      .eq('group_id', g.id)
-      .order('created_at', { ascending: false })
-      .limit(5)
+  const { data: allSessions } = await supabase
+    .from('sessions')
+    .select('id, group_id')
+    .order('created_at', { ascending: false })
 
-    const sessionIds = (sessions || []).map(s => s.id)
-    let hadir = 0, total = 0
-    if (sessionIds.length > 0) {
-      const { data: atts } = await supabase
-        .from('attendances')
-        .select('status')
-        .in('session_id', sessionIds)
-      total = (atts || []).length
-      hadir = (atts || []).filter(a => a.status === 'hadir').length
-    }
+  const last5ByGroup = {}
+  ;(allSessions || []).forEach(s => {
+    if (!last5ByGroup[s.group_id]) last5ByGroup[s.group_id] = []
+    if (last5ByGroup[s.group_id].length < 5) last5ByGroup[s.group_id].push(s.id)
+  })
+  const last5Ids = Object.values(last5ByGroup).flat()
 
-    const { count: memberCount } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('group_id', g.id)
-      .eq('status_akun', 'aktif')
+  const [attsRes, memberRes] = await Promise.all([
+    last5Ids.length
+      ? supabase.from('attendances').select('status, session_id').in('session_id', last5Ids)
+      : Promise.resolve({ data: [] }),
+    supabase.from('profiles').select('group_id').eq('status_akun', 'aktif')
+  ])
 
+  const attCountBySession = {}
+  const hadirBySession = {}
+  ;(attsRes.data || []).forEach(a => {
+    attCountBySession[a.session_id] = (attCountBySession[a.session_id] || 0) + 1
+    if (a.status === 'hadir') hadirBySession[a.session_id] = (hadirBySession[a.session_id] || 0) + 1
+  })
+
+  const memberCountByGroup = {}
+  ;(memberRes.data || []).forEach(m => {
+    memberCountByGroup[m.group_id] = (memberCountByGroup[m.group_id] || 0) + 1
+  })
+
+  groupOverview.value = groupData.map(g => {
+    const ids = last5ByGroup[g.id] || []
+    const total = ids.reduce((s, id) => s + (attCountBySession[id] || 0), 0)
+    const hadir = ids.reduce((s, id) => s + (hadirBySession[id] || 0), 0)
     return {
       id: g.id,
       nama: g.nama_kelompok,
-      totalSesi: sessionIds.length,
+      totalSesi: ids.length,
       hadir,
       totalAbsen: total,
       rate: total > 0 ? Math.round((hadir / total) * 100) : 0,
-      anggota: memberCount || 0
+      anggota: memberCountByGroup[g.id] || 0
     }
-  }))
-  groupOverview.value = groupStats
+  })
 
   const { data: weekSessions } = await supabase
     .from('sessions')
@@ -144,7 +160,56 @@ async function loadDashboard() {
   loading.value = false
 }
 
-onMounted(loadDashboard)
+async function loadActiveCounts() {
+  const ids = activeSessions.value.map(s => s.id)
+  if (ids.length === 0) { sessionCounts.value = {}; return }
+  const { data } = await supabase
+    .from('attendances')
+    .select('session_id, status')
+    .in('session_id', ids)
+  const map = {}
+  ;(data || []).forEach(a => {
+    const c = map[a.session_id] || (map[a.session_id] = { hadir: 0, izin: 0, alpa: 0, total: 0 })
+    c.total++
+    if (a.status === 'hadir') c.hadir++
+    else if (a.status === 'izin') c.izin++
+    else c.alpa++
+  })
+  sessionCounts.value = map
+}
+
+function formatJam(iso) {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
+
+async function openSesiDetail(s) {
+  detailSesi.value = s
+  showSesiDetail.value = true
+  detailLoading.value = true
+  const { data } = await supabase
+    .from('attendances')
+    .select('user_id, status, waktu_absen, profiles(nama, nim)')
+    .eq('session_id', s.id)
+    .order('waktu_absen', { ascending: false })
+  detailAttendances.value = data || []
+  detailLoading.value = false
+}
+
+onMounted(() => {
+  loadDashboard()
+  realtimeSub = supabase
+    .channel('dashboard-att-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'attendances' }, () => {
+      loadActiveCounts()
+      if (showSesiDetail.value && detailSesi.value) openSesiDetail(detailSesi.value)
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (realtimeSub) supabase.removeChannel(realtimeSub)
+})
 </script>
 
 <template>
@@ -266,9 +331,16 @@ onMounted(loadDashboard)
               <p class="text-sm text-gray-500 truncate">{{ s.judul_materi }}</p>
               <p class="text-xs text-gray-400 mt-0.5">oleh {{ s.murabbi }}</p>
             </div>
-            <span class="text-xs text-gray-400 ml-3 shrink-0 font-mono">
-              {{ new Date(s.dibuka_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) }}
-            </span>
+            <div class="flex items-center gap-2 shrink-0 ml-3">
+              <div class="text-center">
+                <p class="text-lg font-bold text-emerald-700 leading-tight">{{ sessionCounts[s.id]?.total || 0 }}</p>
+                <p class="text-[9px] text-gray-400 uppercase tracking-wide">Terabsen</p>
+              </div>
+              <button @click="openSesiDetail(s)"
+                class="px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition-all active:scale-95">
+                Detail
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -379,4 +451,62 @@ onMounted(loadDashboard)
       </div>
     </template>
   </div>
+
+  <!-- ===== MODAL DETAIL SESI ===== -->
+  <Teleport to="body">
+    <div v-if="showSesiDetail"
+      class="fixed inset-0 bg-black/40 z-[999] flex items-end md:items-center justify-center p-4 animate-fade-in"
+      @click.self="showSesiDetail = false">
+      <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-slide-up overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between">
+          <div class="min-w-0">
+            <h3 class="font-bold text-gray-800">{{ detailSesi?.nama_kelompok }}</h3>
+            <p class="text-sm text-gray-500 truncate">{{ detailSesi?.judul_materi }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">oleh {{ detailSesi?.murabbi }} · dibuka {{ formatJam(detailSesi?.dibuka_at) }}</p>
+          </div>
+          <button @click="showSesiDetail = false"
+            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="max-h-[60vh] overflow-y-auto">
+          <div v-if="detailLoading" class="px-5 py-8 text-center text-sm text-gray-400">Memuat...</div>
+          <div v-else-if="detailAttendances.length === 0" class="px-5 py-8 text-center text-sm text-gray-400">
+            Belum ada anggota terabsen.
+          </div>
+          <div v-else class="divide-y divide-gray-50">
+            <div v-for="a in detailAttendances" :key="a.user_id" class="px-5 py-3 flex items-center justify-between">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-700 shrink-0">
+                  {{ (a.profiles?.nama || '?').charAt(0) }}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ a.profiles?.nama || '-' }}</p>
+                  <p class="text-[11px] text-gray-400 truncate">{{ a.profiles?.nim || '-' }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 ml-2">
+                <span class="text-[11px] text-gray-400 font-mono">{{ formatJam(a.waktu_absen) }}</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize"
+                  :class="a.status === 'hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'izin' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'">
+                  {{ a.status }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+          <p class="text-xs text-gray-400">Total: {{ detailAttendances.length }} terabsen</p>
+          <button @click="showSesiDetail = false"
+            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-all">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>

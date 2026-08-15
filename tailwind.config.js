@@ -43,7 +43,15 @@ export default {
       fontFamily: {
         serif: ['Playfair Display', 'Georgia', 'serif'],
         arabic: ['Noto Naskh Arabic', 'serif'],
-        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Outfit', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      boxShadow: {
+        sm: '0 1px 2px 0 rgba(12, 97, 58, 0.06)',
+        DEFAULT: '0 1px 3px 0 rgba(12, 97, 58, 0.08), 0 1px 2px -1px rgba(12, 97, 58, 0.06)',
+        md: '0 4px 6px -1px rgba(12, 97, 58, 0.08), 0 2px 4px -2px rgba(12, 97, 58, 0.06)',
+        lg: '0 10px 15px -3px rgba(12, 97, 58, 0.12), 0 4px 6px -4px rgba(12, 97, 58, 0.08)',
+        xl: '0 20px 25px -5px rgba(12, 97, 58, 0.16), 0 8px 10px -6px rgba(12, 97, 58, 0.10)',
+        'brand-glow': '0 8px 24px -6px rgba(15, 122, 73, 0.35)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

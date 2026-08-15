@@ -28,29 +28,26 @@ async function fetchAnggota() {
     appStore.setError(error.message)
   } else {
     anggota.value = data || []
+    const userIds = (data || []).map(u => u.id)
+    if (userIds.length > 0) {
+      const { data: atts } = await supabase
+        .from('attendances')
+        .select('user_id, status, waktu_absen, sessions!inner(tanggal, judul_materi)')
+        .in('user_id', userIds)
+        .order('waktu_absen', { ascending: false })
+      const map = {}
+      ;(atts || []).forEach(a => {
+        if (!map[a.user_id]) map[a.user_id] = []
+        map[a.user_id].push(a)
+      })
+      attendanceMap.value = map
+    }
   }
   loading.value = false
 }
 
-async function toggleExpand(userId) {
-  if (expandedId.value === userId) {
-    expandedId.value = null
-    return
-  }
-  expandedId.value = userId
-
-  if (!attendanceMap.value[userId]) {
-    const { data } = await supabase
-      .from('attendances')
-      .select('status, waktu_absen, sessions!inner(tanggal, judul_materi)')
-      .eq('user_id', userId)
-      .order('waktu_absen', { ascending: false })
-
-    attendanceMap.value = {
-      ...attendanceMap.value,
-      [userId]: data || []
-    }
-  }
+function toggleExpand(userId) {
+  expandedId.value = expandedId.value === userId ? null : userId
 }
 
 function statusBadge(status) {

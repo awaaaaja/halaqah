@@ -16,6 +16,7 @@ const { scannedToken, isScanning, error: scanError, isFrontCamera, startScanner,
 const { catatAbsen } = useAttendance()
 
 const scannedProfile = ref(null)
+const existingAtt = ref(null)
 const scanLoading = ref(false)
 const confirmLoading = ref(false)
 const pageStep = ref('idle')
@@ -27,8 +28,19 @@ const showBukaForm = ref(false)
 const judulMateri = ref('')
 const bukaLoading = ref(false)
 const akhiriLoading = ref(false)
+const sesiAttendances = ref([])
+const attLoading = ref(false)
+const updateLoading = ref(false)
+let realtimeSub = null
 
 const adminGroupId = computed(() => authStore.profile?.group_id)
+
+const terabsenCount = computed(() => sesiAttendances.value.length)
+
+function formatTime(iso) {
+  if (!iso) return '-'
+  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
 
 function showToast(message, type = 'success') {
   toastMsg.value = message
@@ -37,11 +49,39 @@ function showToast(message, type = 'success') {
   setTimeout(() => { toastVisible.value = false }, 3500)
 }
 
+async function loadSesiAttendances() {
+  if (!sesiAktif.value) { sesiAttendances.value = []; return }
+  attLoading.value = true
+  const { data } = await supabase
+    .from('attendances')
+    .select('user_id, status, waktu_absen, profiles(nama)')
+    .eq('session_id', sesiAktif.value.id)
+    .order('waktu_absen', { ascending: false })
+  sesiAttendances.value = data || []
+  attLoading.value = false
+}
+
+function subscribeRealtime() {
+  if (realtimeSub) supabase.removeChannel(realtimeSub)
+  if (!sesiAktif.value) return
+  realtimeSub = supabase
+    .channel(`att-sesi-${sesiAktif.value.id}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'attendances',
+      filter: `session_id=eq.${sesiAktif.value.id}`
+    }, () => loadSesiAttendances())
+    .subscribe()
+}
+
 async function checkSession() {
   if (!adminGroupId.value) return
   await getSesiAktif(adminGroupId.value)
   if (sesiAktif.value) {
     pageStep.value = 'ready'
+    await loadSesiAttendances()
+    subscribeRealtime()
   }
 }
 
@@ -67,7 +107,16 @@ async function onScanResult(token) {
       return
     }
     await stopScanner()
-    scannedProfile.value = data[0]
+
+    const member = data[0]
+    const { data: existing } = await supabase
+      .from('attendances')
+      .select('status, waktu_absen, scanned_by')
+      .eq('session_id', sesiAktif.value.id)
+      .eq('user_id', member.id)
+      .maybeSingle()
+    existingAtt.value = existing || null
+    scannedProfile.value = member
     pageStep.value = 'result'
   } catch (e) {
     showToast(e.message, 'error')
@@ -78,10 +127,6 @@ async function onScanResult(token) {
   }
 }
 
-async function handleToggleCamera() {
-  await toggleCamera(SCANNER_ID, onScanResult)
-}
-
 async function handleConfirm(status = 'hadir') {
   if (!sesiAktif.value || !scannedProfile.value) return
   confirmLoading.value = true
@@ -90,22 +135,76 @@ async function handleConfirm(status = 'hadir') {
     const label = { hadir: 'Hadir', izin: 'Izin', alpa: 'Alpa' }
     showToast(`${scannedProfile.value.nama} — ${label[status]}`, 'success')
     scannedProfile.value = null
-    pageStep.value = 'ready'
+    existingAtt.value = null
+    await loadSesiAttendances()
+    await handleStartCamera()
   } catch (e) {
     if (e.message?.includes('duplicate') || e.message?.includes('unique') || e.message?.includes('violates')) {
       showToast('Sudah diabsen sebelumnya', 'warning')
+      await loadSesiAttendances()
     } else {
       showToast(e.message, 'error')
     }
     scannedProfile.value = null
-    pageStep.value = 'ready'
+    existingAtt.value = null
+    await handleStartCamera()
   } finally {
     confirmLoading.value = false
   }
 }
 
+async function handleUpdateStatus(status) {
+  if (!sesiAktif.value || !scannedProfile.value) return
+  updateLoading.value = true
+  try {
+    const { error } = await supabase
+      .from('attendances')
+      .update({ status })
+      .eq('session_id', sesiAktif.value.id)
+      .eq('user_id', scannedProfile.value.id)
+    if (error) throw error
+    const label = { hadir: 'Hadir', izin: 'Izin', alpa: 'Alpa' }
+    showToast(`${scannedProfile.value.nama} diubah ke ${label[status]}`)
+    scannedProfile.value = null
+    existingAtt.value = null
+    await loadSesiAttendances()
+    await handleStartCamera()
+  } catch (e) {
+    showToast(e.message, 'error')
+  } finally {
+    updateLoading.value = false
+  }
+}
+
+async function handleDeleteAtt() {
+  if (!sesiAktif.value || !scannedProfile.value) return
+  updateLoading.value = true
+  try {
+    const { error } = await supabase
+      .from('attendances')
+      .delete()
+      .eq('session_id', sesiAktif.value.id)
+      .eq('user_id', scannedProfile.value.id)
+    if (error) throw error
+    showToast(`Catatan ${scannedProfile.value.nama} dihapus`)
+    scannedProfile.value = null
+    existingAtt.value = null
+    await loadSesiAttendances()
+    await handleStartCamera()
+  } catch (e) {
+    showToast(e.message, 'error')
+  } finally {
+    updateLoading.value = false
+  }
+}
+
+async function handleToggleCamera() {
+  await toggleCamera(SCANNER_ID, onScanResult)
+}
+
 async function handleScanAnother() {
   scannedProfile.value = null
+  existingAtt.value = null
   pageStep.value = 'ready'
 }
 
@@ -114,9 +213,11 @@ async function handleBukaSesi() {
   bukaLoading.value = true
   try {
     await bukaSesi(adminGroupId.value, judulMateri.value, authStore.profile?.id || authStore.user?.id)
-    showToast('Sesi liqa dibuka!')
+    showToast('Sesi liqa dibuka')
     showBukaForm.value = false
     judulMateri.value = ''
+    await loadSesiAttendances()
+    subscribeRealtime()
     pageStep.value = 'ready'
   } catch (e) {
     if (e.message?.includes('one_open_session_per_group') || e.message?.includes('duplicate')) {
@@ -134,6 +235,8 @@ async function handleAkhiriSesi() {
   akhiriLoading.value = true
   try {
     await akhiriSesi(sesiAktif.value.id)
+    if (realtimeSub) { supabase.removeChannel(realtimeSub); realtimeSub = null }
+    sesiAttendances.value = []
     showToast('Sesi liqa diakhiri')
     pageStep.value = 'idle'
   } catch (e) {
@@ -149,6 +252,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   stopScanner()
+  if (realtimeSub) supabase.removeChannel(realtimeSub)
 })
 </script>
 
@@ -259,6 +363,37 @@ onUnmounted(() => {
           </svg>
           {{ akhiriLoading ? 'Menutup...' : 'Akhiri Sesi' }}
         </button>
+      </div>
+
+      <!-- ===== DAFTAR TERABSEN (realtime) ===== -->
+      <div class="w-full max-w-sm mt-5 text-left">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div class="px-4 py-3 flex items-center justify-between border-b border-gray-50">
+            <p class="font-bold text-gray-800 text-sm">Terabsen <span class="text-brand-600">({{ terabsenCount }})</span></p>
+            <span class="text-[11px] text-gray-400 truncate max-w-[50%]">{{ sesiAktif?.judul_materi || 'Sesi Liqa' }}</span>
+          </div>
+          <div v-if="attLoading" class="px-4 py-6 text-center text-sm text-gray-400">Memuat...</div>
+          <div v-else-if="sesiAttendances.length === 0" class="px-4 py-6 text-center text-sm text-gray-400">
+            Belum ada yang terabsen — scan QR anggota pertama
+          </div>
+          <div v-else class="divide-y divide-gray-50 max-h-64 overflow-y-auto">
+            <div v-for="a in sesiAttendances" :key="a.user_id" class="px-4 py-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2 min-w-0">
+                <div class="w-7 h-7 rounded-full bg-brand-50 flex items-center justify-center text-[11px] font-bold text-brand-700 shrink-0">
+                  {{ (a.profiles?.nama || '?').charAt(0) }}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ a.profiles?.nama || '-' }}</p>
+                  <p class="text-[11px] text-gray-400 font-mono">{{ formatTime(a.waktu_absen) }}</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize shrink-0"
+                :class="a.status === 'hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'izin' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'">
+                {{ a.status }}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -389,8 +524,21 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Status buttons -->
-          <div class="flex gap-2.5 pt-1">
+          <!-- Sudah diabsen banner -->
+          <div v-if="existingAtt" class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p class="text-sm font-semibold text-amber-800 flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Sudah diabsen
+            </p>
+            <p class="text-xs text-amber-700 mt-0.5">
+              {{ formatTime(existingAtt.waktu_absen) }} — <span class="capitalize font-medium">{{ existingAtt.status }}</span>
+            </p>
+          </div>
+
+          <!-- Status buttons (anggota baru) -->
+          <div v-if="!existingAtt" class="flex gap-2.5 pt-1">
             <button @click="handleConfirm('hadir')" :disabled="confirmLoading"
               class="flex-1 py-3.5 bg-brand-600 text-white rounded-xl font-semibold hover:bg-brand-700 transition-all active:scale-[0.98] disabled:opacity-50 shadow-sm flex items-center justify-center gap-1.5">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,7 +556,30 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <button @click="handleScanAnother" :disabled="confirmLoading"
+          <!-- Koreksi status (sudah diabsen) -->
+          <div v-else class="pt-1">
+            <p class="text-xs font-medium text-gray-500 mb-2">Ubah status:</p>
+            <div class="flex gap-2.5">
+              <button @click="handleUpdateStatus('hadir')" :disabled="updateLoading"
+                class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all active:scale-[0.98] disabled:opacity-50">
+                {{ updateLoading ? '...' : 'Hadir' }}
+              </button>
+              <button @click="handleUpdateStatus('izin')" :disabled="updateLoading"
+                class="py-3 px-4 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-all active:scale-[0.98] disabled:opacity-50 text-sm">
+                Izin
+              </button>
+              <button @click="handleUpdateStatus('alpa')" :disabled="updateLoading"
+                class="py-3 px-4 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-all active:scale-[0.98] disabled:opacity-50 text-sm">
+                Alpa
+              </button>
+            </div>
+            <button @click="handleDeleteAtt" :disabled="updateLoading"
+              class="w-full mt-2 py-2.5 text-sm text-red-500 font-medium border border-red-200 rounded-xl hover:bg-red-50 transition-all active:scale-[0.98] disabled:opacity-50">
+              Hapus Catatan Absen
+            </button>
+          </div>
+
+          <button @click="handleScanAnother" :disabled="confirmLoading || updateLoading"
             class="w-full py-2.5 text-sm text-brand-600 font-medium hover:text-brand-700 transition-all active:scale-[0.98] flex items-center justify-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

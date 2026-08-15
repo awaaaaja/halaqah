@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+import { hitungSkorHarian } from '@/lib/amalanScore'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,7 +63,7 @@ const calendarDays = computed(() => {
     let cellClass = 'bg-gray-50 text-gray-300'
 
     if (log) {
-      const score = hitungSkor(log)
+      const score = hitungSkorHarian(log)
       if (score >= 17) cellClass = 'bg-emerald-500 text-white shadow-sm'
       else if (score >= 10) cellClass = 'bg-amber-400 text-white shadow-sm'
       else if (score > 0) cellClass = 'bg-red-400 text-white shadow-sm'
@@ -84,19 +85,6 @@ const monthLabel = computed(() => {
     year: 'numeric'
   })
 })
-
-function hitungSkor(log) {
-  if (!log) return 0
-  let score = 0
-  const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
-  wajibFields.forEach(f => {
-    if (log[f] === 'tepat_waktu') score += 4
-    else if (log[f] === 'terlambat') score += 2
-    else if (log[f] === 'qadha') score += 1
-  })
-  if (log.shalat_dhuha) score += 3
-  return score
-}
 
 function prevMonth() {
   if (selectedMonth.value === 1) {
@@ -185,7 +173,7 @@ async function exportPDF() {
     doc.text(`Periode: ${monthLabel.value}`, pageWidth / 2, 46, { align: 'center' })
 
     const rows = logs.value.map(log => {
-      const score = hitungSkor(log)
+      const score = hitungSkorHarian(log)
       const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
       const shalat = wajibFields.map(f => {
         const m = { tepat_waktu: 'TW', terlambat: 'TL', qadha: 'Q', belum: '-' }
