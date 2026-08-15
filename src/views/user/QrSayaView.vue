@@ -13,6 +13,7 @@ const anggotaCount = ref(0)
 const lastAttendance = ref(null)
 const activeSessionToday = ref(null)
 const qrToken = ref(null)
+const qrError = ref('')
 
 const namaKelompok = computed(() => {
   return profile.value?.nama_kelompok || 'Belum ada kelompok'
@@ -36,7 +37,14 @@ onMounted(async () => {
 })
 
 async function loadQrToken() {
-  const { data } = await supabase.rpc('get_my_qr_token')
+  const { data, error } = await supabase.rpc('get_my_qr_token')
+  if (error) {
+    console.error('[QrSaya] get_my_qr_token:', error.message)
+    qrError.value = error.message
+    qrToken.value = null
+    return
+  }
+  qrError.value = ''
   qrToken.value = data || null
 }
 
@@ -224,6 +232,9 @@ const kehadiranRate = computed(() => {
         :kelas="profile.kelas"
         :nama-kelompok="namaKelompok"
       />
+      <div v-if="qrError" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+        Gagal memuat QR: {{ qrError }}
+      </div>
 
       <!-- Tips -->
       <div class="mt-6 p-4 bg-amber-50/80 border border-amber-200 rounded-xl text-sm text-amber-800">

@@ -224,3 +224,76 @@ Diterapkan per skill redesign (audit → fix), tanpa migrasi stack:
 | **Konten** | Tanda seru dihapus dari toast "Sesi liqa dibuka" (ScanAbsen, Beranda) |
 
 Verifikasi: `npm run build` lolos. Skips (YAGNI): cookie consent, footer legal links, animasi scroll-driven, glassmorphism — tidak relevan untuk app utility mobile-first.
+
+---
+
+## 6. Audit Bug & Test Keseluruhan (E2E live)
+
+### 6.1 Temuan baru dari test E2E (live, 15 Agu 2026)
+
+| # | Sev | Temuan | Bukti |
+|---|---|---|---|
+| A1 | **KRITIS** | **Beranda admin blank saat reload halaman** — race: `authStore.fetchSession()` mengisi `profile` async, `BerandaView.onMounted → loadData()` melihat `adminGroupId` masih null → `return` diam-diam tanpa pernah dipanggil ulang. Login fresh OK (profile sudah siap), reload → main kosong (`<!----><!---->`), hanya 2 request profil, tanpa console error | reload `/beranda` dengan sesi aktif → halaman kosong |
+| A2 | SEDANG | Timer sesi (`elapsedSessionTime`) mati saat halaman dimuat dengan sesi sudah aktif (`startSessionTimer` hanya di `onMounted` + setelah `handleBukaSesi`) — terhubung ke A1 | kode `BerandaView.vue:199-203` |
+| A3 | RENDAH | KelolaKelompok tampil "Belum ada Murabbi" untuk kelompok yang punya admin aktif (Kelompok Al-Furqan ↔ Admin Murabbi) — cek kemungkinan `groups.murabbi_id` kosong / hitungan role | halaman /dashboard/kelompok |
+| A4 | RENDAH | Setelah simpan catatan tidak redirect (tetap di `/catatan/tambah`) — toast sukses tapi pengguna bisa double-save | /catatan/tambah |
+| A5 | INFO | Halaman baca surat: 1x "Failed to fetch" (equran.id `ERR_CONNECTION_CLOSED`) — error state ada tapi tanpa tombol retry | /quran/1 |
+
+### 6.2 Hasil audit kode (16 temuan, diurut prioritas) — verifikasi manual
+
+**Sedang:**
+- B1 `KalenderAmalanView.vue:101` → `goToDay()` push `?tanggal=` tapi `AmalanHarianView` tak pernah baca `route.query` — **TERKONFIRMASI LIVE**: klik 13 Agu di kalender → URL `/amalan?tanggal=2026-08-13` tapi halaman menampilkan "Sabtu, 15 Agustus 2026".
+- B2 `AmalanHarianView.vue:151-152` — `watch(currentDate)` batalkan debounce tanpa simpan; `doSave()` in-flight tanggal lama menimpa `logData` tanggal baru → perubahan hilang diam-diam.
+- B3 `useAmalan.js:8-14` — `getLog` tanpa cek `.error`; query gagal → form tampil "semua belum" → auto-save bisa menimpa data lama.
+- B4 `ScanAbsenView.vue:80` — "Batal" saat scan hanya `pageStep='ready'`, kamera tak di-`stopScanner()` → "Mulai Scan" lagi throw "Already started" → macet sampai reload.
+- B5 `KelolaKelompokView.vue:112-120` — hapus kelompok selalu gagal FK (`profiles.group_id`/`sessions.group_id` tanpa ON DELETE) + pesan error mentah.
+- B6 `BerandaView.vue:199-203` — timer sesi (lihat A2).
+- B7 `DashboardView.vue:40` — sesi aktif difilter `.eq('tanggal', today)` → sesi lintas hari hilang dari statistik & daftar.
+- B8 Umum: `useSession.js`/`useAmalan.js`/`useAttendance.js`/`authStore.js` — destructure tanpa cek `.error`, `loading` tidak di-reset di `finally` → loading bisa macet permanen / data kosong diam-diam.
+
+**Rendah:**
+- B9 `ApprovalAnggotaView.vue:80-85` — Setujui/Tolak tanpa disabled → double-submit RPC.
+- B10 `BerandaView.vue:226-236` — blank bila `adminGroupId` ada tapi `groupInfo` null (terkait A1).
+- B11 `router/index.js:127-131` — query profil guard tanpa cek error → network gagal = user di-logout paksa.
+- B12 `BerandaView.vue:210-214` — realtime INSERT memanggil 3x query (count + recent + loadData penuh).
+- B13 `LaporanView.vue:61-64` — `.in('session_id', [])` tanpa guard → PostgREST 400 bila tak ada sesi (berbeda dgn DashboardView yang sudah diguard).
+- B14 `DetailAmalanUserView.vue:78-79` — `logs.value.sort()` di dalam computed (mutasi sumber).
+- B15 `RiwayatView.vue:27-29` — bila profil belum termuat → halaman kosong tanpa reset loading.
+- B16 `QrSayaView.vue` — RPC `get_my_qr_token` gagal → kartu tanpa QR, tanpa pesan error.
+
+### 6.3 Hasil test E2E (browser live, akun seed)
+
+| Area | Hasil |
+|---|---|
+| Login/logout semua role + redirect by role | ✅ |
+| **User**: QR Saya (canvas 300x300, statistik, download tombol), Al-Quran daftar (114) + baca surat (audio, bookmark, tafsir), Amalan Harian (form, skor /25), Catatan CRUD (buat → tampil → tags), Profil | ✅ (B1 gagal: kalender→tanggal) |
+| **Admin**: Beranda (fix v-if berfungsi — stats/CTA/riwayat tampil), Buka Sesi (LIVE + timer 00:00:25), reload → **BLANK (A1)** | ⚠️ → ✅ (lihat 6.5) |
+| **Super Admin**: Dashboard (stats, sesi aktif + modal Detail, kehadiran per kelompok, aktivitas murabbi, tren 7 hari — reload OK), Kelola Murabbi/Kelompok/Akun, Approval (empty state), Laporan (sesi + H/I/A + export), Pengaturan, Monitoring Amalan | ✅ |
+| RLS attendances (migrasi 00009) | ✅ (sebelumnya: admin scoped) |
+| **Tidak diuji** (lingkungan): scan kamera QR, export Excel/PDF file, realtime lintas perangkat | — |
+
+### 6.4 Data uji — sudah dibersihkan
+- Sesi "Uji E2E Buka Sesi" → ditutup (`is_open=false`), `open_sesi` kini 0.
+- Catatan "Materi Uji Coba" (#test #e2e) → dihapus dari `notes`.
+
+**Rekomendasi urutan fix:** A1/A2 (blank reload + timer) → B1 (kalender) → B4 (kamera) → B5 (hapus kelompok) → B2/B3 (data amalan) → B8 (pola composable) → sisanya minor.
+
+### 6.5 Fix batch 1 — selesai & terverifikasi live
+- **A1 (beranda blank saat reload)** ✅ — `BerandaView.vue`: panggilan `loadData()` di `onMounted` diganti `watch(adminGroupId, ..., { immediate: true })`; pola race yang sama juga difix di `ScanAbsenView.vue` (`watch(adminGroupId) → checkSession()`).
+- **A2 (timer mati saat load dengan sesi aktif)** ✅ — timer dipindah ke `watch(sesiAktif, ...)` (start saat sesi aktif, stop saat null), bukan lagi hanya di `onMounted`/`handleBukaSesi`.
+- **B4 (kamera stuck setelah Batal)** ✅ — `handleScanAnother` kini memanggil `stopScanner()` (scanner instance di-null-kan), "Mulai Scan" lagi tak lagi throw "Already started".
+- Verifikasi live (deploy baru): login admin → beranda penuh → buka sesi → timer `00:00:09` → **reload → beranda tetap penuh + timer lanjut `00:00:31`** (bukan reset) → `/scan-absen` langsung mendeteksi sesi aktif → akhiri sesi → bersih. Tanpa console error. B4 tidak bisa diuji headless (butuh kamera fisik).
+
+### 6.6 Fix batch 2 — selesai & terverifikasi live
+- **B1 (kalender → tanggal diabaikan)** ✅ — `AmalanHarianView.vue`: `currentDate` kini diinisialisasi dari `route.query.tanggal` (validasi format `YYYY-MM-DD`, fallback hari ini) + `watch(() => route.query.tanggal)` agar back/forward browser sinkron. Verifikasi: `/amalan?tanggal=2026-08-13` → tampil "Kamis, 13 Agustus 2026" (sebelumnya selalu "Sabtu, 15 Agustus 2026").
+- **B2 (auto-save menimpa data tanggal lain)** ✅ — `doSave` kini mengunci tanggal (`const tgl = tanggalStr.value`) & versi save (`saveSeq++`): saat pindah hari, save in-flight dibatalkan (tidak menimpa `logData`/`hasChanges` tanggal baru); `watch(currentDate)` ikut `saveSeq++`. Verifikasi: ubah Subuh 13 → langsung pindah ke 14 → data 14 (19/25) tetap utuh, save tersimpan ke 13.
+- **B3 (getLog/getBulanan tanpa cek error)** ✅ — `useAmalan.js`: kedua fungsi kini cek `.error` (log + return null/[]) dan `loading` di-reset di `finally` (tak lagi stuck saat error).
+- Data uji dibersihkan (Subuh 13 Agu dikembalikan ke "belum"). Console bersih (2 warning aksesibilitas pre-existing).
+
+### 6.7 Fix batch 3 — selesai & terverifikasi live
+- **B5 (hapus kelompok gagal FK)** ✅ — `KelolaKelompokView.vue`: sebelum delete, cek dependensi sesi (`count sessions`) → grup bersesi **ditolak** dengan pesan jelas (bukan error FK mentah), anggota di-lepas (`profiles.group_id → null`) dulu lalu grup dihapus. Verifikasi live: hapus "Kelompok 9 Naga" (7 sesi) → ditolak & grup utuh; "Grup Test B5" (0 sesi) → terhapus.
+- **B7 (sesi lintas hari hilang)** ✅ — `DashboardView.vue:40`: hapus `.eq('tanggal', today)` dari query sesi aktif → sesi `is_open=true` lintas hari kini ikut dihitung. (Tidak bisa diuji headless tanpa sesi lintas hari; dashboard terkonfirmasi tetap berfungsi.)
+- **B8 (pola composable)** ✅ — `useSession.js` (`getSesiAktif`, `getSesiSummary`) & `useAttendance.js` (`getRiwayatUser`): cek `.error` (log + return default), `loading` di-reset di `finally` (gabung pola `useAmalan.js` dari batch 2).
+- **A3 ("Belum ada Murabbi")** ✅ — akar masalah: `groups.murabbi_id` kosong (data). Disinkronkan: Al-Furqan → Admin Murabbi, 9 Naga → Ujang Joestar (Zola sudah benar). Verifikasi live: semua kelompok tampil murabbi.
+- **Minor** ✅ — B9 (Approval: `processingId` → disabled anti double-submit), B11 (router guard: error profil → log + lanjut, bukan logout paksa), B13 (Laporan: guard `.in('session_id', [])` → 400), B14 (DetailAmalanUser: `[...logs].sort()` tanpa mutasi), B15 (RiwayatUser: `watch(user.id)` → tak kosong selamanya), B16 (QrSaya: RPC error → pesan di UI), A5 (BacaSurat: tombol "Coba Lagi"). A4 sudah benar (redirect ada) — tidak perlu fix.
+- Build lolos, deploy baru, tanpa regresi.

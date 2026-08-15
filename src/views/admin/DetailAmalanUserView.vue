@@ -76,7 +76,7 @@ const calendarDays = computed(() => {
 })
 
 const monthLogs = computed(() => {
-  return logs.value.sort((a, b) => b.tanggal.localeCompare(a.tanggal))
+  return [...(logs.value || [])].sort((a, b) => b.tanggal.localeCompare(a.tanggal))
 })
 
 const monthLabel = computed(() => {

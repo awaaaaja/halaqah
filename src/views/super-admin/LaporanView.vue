@@ -55,7 +55,7 @@ async function loadData() {
     .lte('tanggal', dateEnd.value)
     .order('tanggal', { ascending: false })
 
-  if (!sessions) { loading.value = false; return }
+  if (!sessions || sessions.length === 0) { allData.value = []; loading.value = false; return }
 
   const sessionIds = sessions.map(s => s.id)
   const { data: atts } = await supabase

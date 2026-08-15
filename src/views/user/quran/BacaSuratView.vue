@@ -199,6 +199,9 @@ watch(detailSurat, (val) => {
       </svg>
       <p class="font-medium">Gagal memuat surat</p>
       <p class="text-sm mt-1">{{ error }}</p>
+      <button @click="fetchDetailSurat(route.params.nomor)" class="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+        Coba Lagi
+      </button>
     </div>
 
     <template v-else-if="detailSurat">

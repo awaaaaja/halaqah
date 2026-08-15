@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useAttendance } from '@/composables/useAttendance'
 
@@ -24,11 +24,9 @@ function statusBadge(status) {
   return map[status] || 'bg-gray-100 text-gray-600'
 }
 
-onMounted(() => {
-  if (authStore.user) {
-    getRiwayatUser(authStore.user.id)
-  }
-})
+watch(() => authStore.user?.id, (id) => {
+  if (id) getRiwayatUser(id)
+}, { immediate: true })
 </script>
 
 <template>

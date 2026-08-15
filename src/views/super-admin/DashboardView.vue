@@ -37,7 +37,7 @@ async function loadDashboard() {
     supabase.from('groups').select('id', { count: 'exact', head: true }),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user').eq('status_akun', 'aktif'),
-    supabase.from('sessions').select('id, group_id, judul_materi, dibuka_at, created_by, groups(nama_kelompok), profiles!sessions_created_by_fkey(nama)').eq('is_open', true).eq('tanggal', today),
+    supabase.from('sessions').select('id, group_id, judul_materi, dibuka_at, created_by, groups(nama_kelompok), profiles!sessions_created_by_fkey(nama)').eq('is_open', true),
     supabase.from('groups').select('id, nama_kelompok'),
     supabase.from('profiles').select('id, nama, group_id, groups(nama_kelompok)').eq('role', 'admin').order('nama'),
   ])

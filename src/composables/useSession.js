@@ -7,15 +7,23 @@ export function useSession() {
 
   async function getSesiAktif(groupId) {
     loading.value = true
-    const { data } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('group_id', groupId)
-      .eq('is_open', true)
-      .maybeSingle()
-    sesiAktif.value = data
-    loading.value = false
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('group_id', groupId)
+        .eq('is_open', true)
+        .maybeSingle()
+      if (error) {
+        console.error('[useSession] getSesiAktif:', error.message)
+        sesiAktif.value = null
+        return null
+      }
+      sesiAktif.value = data
+      return data
+    } finally {
+      loading.value = false
+    }
   }
 
   async function bukaSesi(groupId, judulMateri = '', createdBy) {
@@ -44,10 +52,14 @@ export function useSession() {
   }
 
   async function getSesiSummary(sessionId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('attendances')
       .select('status')
       .eq('session_id', sessionId)
+    if (error) {
+      console.error('[useSession] getSesiSummary:', error.message)
+      return { total: 0, hadir: 0, izin: 0, alpa: 0 }
+    }
     if (!data) return { total: 0, hadir: 0, izin: 0, alpa: 0 }
     return {
       total: data.length,

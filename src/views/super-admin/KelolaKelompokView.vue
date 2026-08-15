@@ -92,6 +92,15 @@ async function handleDelete(groupId) {
   if (!confirm('Hapus kelompok ini? Anggota di dalamnya akan kehilangan kelompok.')) return
   deleting.value = new Set([...deleting.value, groupId])
   try {
+    const { count: sesiCount, error: se } = await supabase
+      .from('sessions').select('id', { count: 'exact', head: true }).eq('group_id', groupId)
+    if (se) throw se
+    if (sesiCount > 0) {
+      throw new Error('Grup punya riwayat sesi — hapus sesi-nya dulu atau nonaktifkan grup')
+    }
+    const { error: ue } = await supabase
+      .from('profiles').update({ group_id: null }).eq('group_id', groupId)
+    if (ue) throw ue
     const { error } = await supabase.from('groups').delete().eq('id', groupId)
     if (error) throw error
     appStore.showToast('Kelompok dihapus')
