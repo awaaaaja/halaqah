@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onUnmounted, computed, nextTick, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
@@ -205,6 +205,7 @@ async function handleToggleCamera() {
 async function handleScanAnother() {
   scannedProfile.value = null
   existingAtt.value = null
+  await stopScanner()
   pageStep.value = 'ready'
 }
 
@@ -246,9 +247,9 @@ async function handleAkhiriSesi() {
   }
 }
 
-onMounted(() => {
-  checkSession()
-})
+watch(adminGroupId, (id) => {
+  if (id) checkSession()
+}, { immediate: true })
 
 onUnmounted(() => {
   stopScanner()

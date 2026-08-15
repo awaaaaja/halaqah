@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
@@ -168,7 +168,6 @@ async function handleBukaSesi() {
     sesiDitutup.value = null
     sesiSummary.value = null
     await loadData()
-    startSessionTimer()
   } catch (e) {
     if (e.message?.includes('one_open_session_per_group') || e.message?.includes('duplicate')) {
       appStore.showToast('Sudah ada sesi aktif untuk kelompok ini', 'warning')
@@ -200,10 +199,16 @@ async function handleAkhiriSesi() {
 
 let realtimeSub = null
 
-onMounted(() => {
-  loadData()
-  if (sesiAktif.value) startSessionTimer()
+watch(adminGroupId, (id) => {
+  if (id) loadData()
+}, { immediate: true })
 
+watch(sesiAktif, (s) => {
+  if (s?.dibuka_at) startSessionTimer()
+  else stopSessionTimer()
+}, { immediate: true })
+
+onMounted(() => {
   realtimeSub = supabase
     .channel('attendances-realtime')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendances' }, () => {
