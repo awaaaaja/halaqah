@@ -1,15 +1,27 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import { useAmalan } from '@/composables/useAmalan'
 
+const route = useRoute()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 const { getLog, upsertLog, hitungSkorHarian, loading } = useAmalan()
 
 const today = new Date()
-const currentDate = ref(new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+
+function parseTanggalQuery(q) {
+  if (!q) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(q)
+  if (!m) return null
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return isNaN(d.getTime()) ? null : d
+}
+
+const qDate = parseTanggalQuery(route.query.tanggal)
+const currentDate = ref(qDate || new Date(today.getFullYear(), today.getMonth(), today.getDate()))
 const logData = ref(null)
 const saving = ref(false)
 const hasChanges = ref(false)
@@ -98,6 +110,7 @@ function goToday() {
 }
 
 let debounceTimer = null
+let saveSeq = 0
 function debouncedSave() {
   hasChanges.value = true
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -108,6 +121,8 @@ async function doSave() {
   if (!authStore.user?.id) return
   if (!hasChanges.value) return
   saving.value = true
+  const seq = ++saveSeq
+  const tgl = tanggalStr.value
   try {
     const payload = {
       shalat_subuh: form.value.shalat_subuh,
@@ -121,14 +136,16 @@ async function doSave() {
       rawatib_badiyah: form.value.rawatib_badiyah,
       catatan_harian: form.value.catatan_harian
     }
-    const result = await upsertLog(authStore.user.id, tanggalStr.value, payload)
+    const result = await upsertLog(authStore.user.id, tgl, payload)
+    if (seq !== saveSeq) return
     logData.value = result
     hasChanges.value = false
     appStore.showToast('Amalan tersimpan')
   } catch (e) {
+    if (seq !== saveSeq) return
     appStore.showToast(e.message || 'Gagal menyimpan', 'error')
   } finally {
-    saving.value = false
+    if (seq === saveSeq) saving.value = false
   }
 }
 
@@ -160,8 +177,16 @@ const isFutureDate = computed(() => {
 const isEditable = computed(() => !isFutureDate.value)
 
 watch(currentDate, () => {
+  saveSeq++
   if (debounceTimer) clearTimeout(debounceTimer)
   loadData()
+})
+
+watch(() => route.query.tanggal, (q) => {
+  const d = parseTanggalQuery(q)
+  if (d && d.getTime() !== currentDate.value.getTime()) {
+    currentDate.value = d
+  }
 })
 
 onMounted(async () => {

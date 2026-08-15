@@ -9,15 +9,23 @@ export function useAmalan() {
 
   async function getLog(userId, tanggal) {
     loading.value = true
-    const { data } = await supabase
-      .from('daily_worship_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('tanggal', tanggal)
-      .maybeSingle()
-    logHarian.value = data || null
-    loading.value = false
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('daily_worship_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('tanggal', tanggal)
+        .maybeSingle()
+      if (error) {
+        console.error('[useAmalan] getLog:', error.message)
+        logHarian.value = null
+        return null
+      }
+      logHarian.value = data || null
+      return data
+    } finally {
+      loading.value = false
+    }
   }
 
   async function upsertLog(userId, tanggal, payload) {
@@ -50,16 +58,24 @@ export function useAmalan() {
     const endDate = new Date(tahun, bulan, 0)
     const end = endDate.toISOString().split('T')[0]
     loading.value = true
-    const { data } = await supabase
-      .from('daily_worship_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('tanggal', start)
-      .lte('tanggal', end)
-      .order('tanggal', { ascending: true })
-    riwayatBulan.value = data || []
-    loading.value = false
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('daily_worship_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('tanggal', start)
+        .lte('tanggal', end)
+        .order('tanggal', { ascending: true })
+      if (error) {
+        console.error('[useAmalan] getBulanan:', error.message)
+        riwayatBulan.value = []
+        return []
+      }
+      riwayatBulan.value = data || []
+      return data
+    } finally {
+      loading.value = false
+    }
   }
 
   function hitungKonsistensi(logs, type = 'shalat_wajib') {
