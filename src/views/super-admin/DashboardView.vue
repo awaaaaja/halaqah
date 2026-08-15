@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 
 const stats = ref({
@@ -19,6 +19,30 @@ const detailSesi = ref(null)
 const detailAttendances = ref([])
 const detailLoading = ref(false)
 let realtimeSub = null
+
+const trendMax = computed(() => Math.max(...weeklyTrend.value.map(d => d.total), 1))
+const trendPts = computed(() => {
+  const n = weeklyTrend.value.length
+  if (n === 0) return []
+  const W = 300, H = 130, padTop = 10, base = H
+  return weeklyTrend.value.map((d, i) => {
+    const x = n === 1 ? W / 2 : (W / (n - 1)) * i
+    const y = base - (d.total / trendMax.value) * (base - padTop)
+    return [x, y]
+  })
+})
+const trendLine = computed(() => {
+  if (trendPts.value.length === 0) return ''
+  return 'M ' + trendPts.value.map(p => p.map(v => v.toFixed(1)).join(',')).join(' L ')
+})
+const trendArea = computed(() => {
+  if (trendPts.value.length === 0) return ''
+  const pts = trendPts.value
+  const base = 130
+  return `M ${pts[0][0].toFixed(1)} ${base} L ` +
+    pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' L ') +
+    ` L ${pts[pts.length - 1][0].toFixed(1)} ${base} Z`
+})
 
 async function loadDashboard() {
   loading.value = true
@@ -431,16 +455,25 @@ onUnmounted(() => {
             Belum ada data.
           </div>
           <div v-else>
-            <div class="flex items-end gap-1.5 h-36 mb-2">
-              <div v-for="d in weeklyTrend" :key="d.tanggal" class="flex-1 flex flex-col items-center justify-end gap-1">
-                <span class="text-[10px] font-medium text-gray-500">{{ d.total }}</span>
-                <div class="w-full rounded-t-md transition-all duration-500"
-                  :class="d.total > 0 ? 'bg-gradient-to-t from-emerald-500 to-emerald-400' : 'bg-gray-100'"
-                  :style="{ height: Math.max(4, (d.total / Math.max(...weeklyTrend.map(x => x.total), 1)) * 100) + '%' }">
-                </div>
-                <span class="text-[10px] text-gray-400 whitespace-nowrap">
-                  {{ new Date(d.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short' }) }}
-                </span>
+            <svg viewBox="0 0 300 140" class="w-full" preserveAspectRatio="none" role="img" aria-label="Grafik tren kehadiran 7 hari">
+              <defs>
+                <linearGradient id="gradTren" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#059669" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#059669" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <line x1="0" y1="130" x2="300" y2="130" stroke="#e5e7eb" stroke-width="1"/>
+              <path :d="trendArea" fill="url(#gradTren)"/>
+              <path :d="trendLine" fill="none" stroke="#059669" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+              <circle v-for="(p, i) in trendPts" :key="i" :cx="p[0]" :cy="p[1]" r="3.5" fill="#059669"
+                :stroke="weeklyTrend[i].total > 0 ? '#ffffff' : 'none'" stroke-width="1.5">
+                <title>{{ weeklyTrend[i].total }} absensi</title>
+              </circle>
+            </svg>
+            <div class="grid grid-cols-7 mt-1">
+              <div v-for="d in weeklyTrend" :key="d.tanggal" class="text-center text-[10px] text-gray-400">
+                {{ new Date(d.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short' }) }}
               </div>
             </div>
             <div class="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-gray-50">

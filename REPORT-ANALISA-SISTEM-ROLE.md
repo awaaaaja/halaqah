@@ -297,3 +297,6 @@ Verifikasi: `npm run build` lolos. Skips (YAGNI): cookie consent, footer legal l
 - **A3 ("Belum ada Murabbi")** ✅ — akar masalah: `groups.murabbi_id` kosong (data). Disinkronkan: Al-Furqan → Admin Murabbi, 9 Naga → Ujang Joestar (Zola sudah benar). Verifikasi live: semua kelompok tampil murabbi.
 - **Minor** ✅ — B9 (Approval: `processingId` → disabled anti double-submit), B11 (router guard: error profil → log + lanjut, bukan logout paksa), B13 (Laporan: guard `.in('session_id', [])` → 400), B14 (DetailAmalanUser: `[...logs].sort()` tanpa mutasi), B15 (RiwayatUser: `watch(user.id)` → tak kosong selamanya), B16 (QrSaya: RPC error → pesan di UI), A5 (BacaSurat: tombol "Coba Lagi"). A4 sudah benar (redirect ada) — tidak perlu fix.
 - Build lolos, deploy baru, tanpa regresi.
+
+### 6.8 Dashboard — "Tren Kehadiran 7 Hari" jadi grafik
+- `DashboardView.vue`: bar polos (deretan angka 0 + bar abu-abu) diganti **area/line chart SVG** (tanpa library baru — sesuai AGENTS.md): garis emerald + area gradient + titik per hari (tooltip jumlah absensi) + baseline + label hari. `weeklyTrend` kosong → garis di baseline, bukan error.
