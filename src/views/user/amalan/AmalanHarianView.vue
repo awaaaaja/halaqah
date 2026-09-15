@@ -190,7 +190,6 @@ watch(() => route.query.tanggal, (q) => {
 })
 
 onMounted(async () => {
-  await authStore.fetchSession?.()
   await loadData()
 })
 

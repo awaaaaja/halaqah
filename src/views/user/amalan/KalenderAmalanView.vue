@@ -109,7 +109,6 @@ async function loadMonth() {
 }
 
 onMounted(async () => {
-  await authStore.fetchSession?.()
   await loadMonth()
 })
 </script>
