@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-09-15T16:21:57.966Z",
+  "dry_run": true,
+  "ikhwan_relations": 136,
+  "akhwat_relations": 426,
+  "total_relations": 562,
+  "groups": {
+    "unique": 47,
+    "created": 0,
+    "skipped": 47
+  },
+  "mentors": {
+    "unique": 46,
+    "created": 0,
+    "skipped": 46
+  },
+  "mentor_links": {
+    "created": 47,
+    "skipped": 0,
+    "failed": 0
+  },
+  "user_links": {
+    "created": 26,
+    "skipped": 536,
+    "notFound": 0,
+    "failed": 0
+  }
+}
