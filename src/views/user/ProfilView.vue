@@ -1,11 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
+const isSuperAdmin = computed(() => authStore.profile?.role === 'super_admin')
 const profile = ref({ nama: '', email: '', nim: '', prodi: '', kelas: '', angkatan: '', no_hp: '' })
 const saving = ref(false)
 const showPasswordForm = ref(false)
@@ -30,10 +31,12 @@ onMounted(() => {
 async function handleSave() {
   saving.value = true
   try {
-    await authStore.updateProfile({
-      nama: profile.value.nama,
-      no_hp: profile.value.no_hp
-    })
+    const updates = { nama: profile.value.nama, no_hp: profile.value.no_hp }
+    if (!isSuperAdmin.value && profile.value.email !== authStore.profile?.email) {
+      await authStore.updateEmail(profile.value.email)
+      updates.email = profile.value.email
+    }
+    await authStore.updateProfile(updates)
     appStore.showToast('Profil diperbarui')
   } catch (e) {
     appStore.showToast(e.message, 'error')
@@ -106,12 +109,14 @@ async function handleChangePassword() {
           </div>
         </div>
 
-        <!-- Email (read-only) -->
+        <!-- Email -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input :value="profile.email" disabled
+          <input v-if="!isSuperAdmin" v-model="profile.email" type="email"
+            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          <input v-else :value="profile.email" disabled
             class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed" />
-          <p class="text-xs text-gray-400 mt-1">Email tidak dapat diubah</p>
+          <p v-if="isSuperAdmin" class="text-xs text-gray-400 mt-1">Email Super Admin tidak dapat diubah</p>
         </div>
 
         <!-- No. HP -->

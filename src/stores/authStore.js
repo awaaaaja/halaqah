@@ -89,6 +89,11 @@ export const useAuthStore = defineStore('auth', () => {
     if (error) throw error
   }
 
+  async function updateEmail(newEmail) {
+    const { error } = await supabase.auth.updateUser({ email: newEmail })
+    if (error) throw error
+  }
+
   async function logout() {
     await supabase.auth.signOut()
     user.value = null
@@ -105,6 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     updateProfile,
     updatePassword,
+    updateEmail,
     logout
   }
 })
