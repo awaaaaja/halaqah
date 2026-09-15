@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const email = ref('')
+const nim = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
@@ -15,7 +15,7 @@ async function handleLogin() {
   error.value = ''
   loading.value = true
   try {
-    await authStore.login(email.value, password.value)
+    await authStore.login(nim.value, password.value)
     const role = authStore.profile?.role
     const status = authStore.profile?.status_akun
     if (status === 'pending') return router.push('/pending')
@@ -48,8 +48,8 @@ async function handleLogin() {
 
       <form @submit.prevent="handleLogin" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-          <input v-model="email" type="email" required placeholder="contoh@email.com"
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">NIM</label>
+          <input v-model="nim" type="text" required placeholder="Masukkan NIM"
             class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all bg-gray-50/50 text-sm" />
         </div>
 

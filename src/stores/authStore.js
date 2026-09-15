@@ -34,7 +34,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email, password) {
+  async function login(identifier, password) {
+    let email = identifier
+    if (!identifier.includes('@')) {
+      const { data: emailFromNim, error: rpcError } = await supabase.rpc('get_email_by_nim', { p_nim: identifier })
+      if (rpcError || !emailFromNim) throw new Error('NIM tidak ditemukan')
+      email = emailFromNim
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     if (data.session) {
