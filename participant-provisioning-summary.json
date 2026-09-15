@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-09-15T15:35:26.367Z",
+  "dry_run": true,
+  "ikhwan_count": 136,
+  "akhwat_count": 426,
+  "total_unique": 534,
+  "results": {
+    "created": 0,
+    "skipped_existing": 0,
+    "duplicate_nim": 534,
+    "invalid_nim": 0,
+    "failed": 0
+  }
+}
