@@ -83,9 +83,11 @@ async function loadDashboard() {
   await loadActiveCounts()
 
   const groupData = groupsWithCount || []
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
   const { data: allSessions } = await supabase
     .from('sessions')
     .select('id, group_id')
+    .gte('created_at', monthStart)
     .order('created_at', { ascending: false })
 
   const last5ByGroup = {}

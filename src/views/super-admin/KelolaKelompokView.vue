@@ -13,6 +13,7 @@ const oldMurabbiId = ref(null)
 const form = ref({ nama_kelompok: '', deskripsi: '', murabbi_id: '' })
 const formLoading = ref(false)
 const deleting = ref(new Set())
+const confirmDeleteId = ref(null)
 
 async function loadData() {
   loading.value = true
@@ -89,7 +90,7 @@ async function handleSave() {
 }
 
 async function handleDelete(groupId) {
-  if (!confirm('Hapus kelompok ini? Anggota di dalamnya akan kehilangan kelompok.')) return
+  confirmDeleteId.value = null
   deleting.value = new Set([...deleting.value, groupId])
   try {
     const { count: sesiCount, error: se } = await supabase
@@ -151,7 +152,7 @@ onMounted(loadData)
           </div>
           <div class="flex gap-2">
             <button @click="openEdit(g)" class="text-sm text-emerald-700 font-medium hover:text-emerald-800">Edit</button>
-            <button @click="handleDelete(g.id)" :disabled="deleting.has(g.id)"
+            <button @click="confirmDeleteId = g.id" :disabled="deleting.has(g.id)"
               class="text-sm text-red-600 font-medium hover:text-red-700 disabled:opacity-50">
               {{ deleting.has(g.id) ? '...' : 'Hapus' }}
             </button>
@@ -196,5 +197,34 @@ onMounted(loadData)
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <div v-if="confirmDeleteId"
+        class="fixed inset-0 bg-black/40 z-[999] flex items-end md:items-center justify-center p-4 animate-fade-in"
+        @click.self="confirmDeleteId = null">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-slide-up">
+          <div class="text-center mb-5">
+            <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800">Hapus Kelompok?</h3>
+            <p class="text-sm text-gray-500 mt-1">Anggota di dalamnya akan kehilangan kelompok.</p>
+          </div>
+          <div class="flex gap-3">
+            <button @click="confirmDeleteId = null"
+              class="flex-1 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all active:scale-[0.98]">
+              Batal
+            </button>
+            <button @click="handleDelete(confirmDeleteId)"
+              class="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-all active:scale-[0.98] shadow-sm">
+              Hapus
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

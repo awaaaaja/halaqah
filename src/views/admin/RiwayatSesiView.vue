@@ -34,6 +34,7 @@ async function fetchRiwayatSesi() {
   sesiList.value = data || []
 
   const sessionIds = (data || []).map(s => s.id)
+  // Scope ke sesi kelompok admin via RLS policy + query di atas
   const { data: atts } = sessionIds.length
     ? await supabase.from('attendances').select('status, session_id').in('session_id', sessionIds)
     : { data: [] }

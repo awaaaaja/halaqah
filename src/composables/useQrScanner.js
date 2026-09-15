@@ -72,6 +72,7 @@ export function useQrScanner() {
     try {
       if (scanner.value) {
         await scanner.value.stop()
+        try { scanner.value.clear() } catch (_) {}
         scanner.value = null
       }
     } catch (e) {

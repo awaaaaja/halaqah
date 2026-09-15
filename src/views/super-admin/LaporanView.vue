@@ -44,6 +44,10 @@ const filteredData = computed(() => {
 })
 
 async function loadData() {
+  if (dateStart.value > dateEnd.value) {
+    appStore.showToast('Tanggal mulai harus sebelum tanggal akhir', 'warning')
+    return
+  }
   loading.value = true
   const { data: g } = await supabase.from('groups').select('id, nama_kelompok').order('nama_kelompok')
   groups.value = g || []

@@ -1,9 +1,18 @@
-import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
 async function getAuthHeader() {
   const { data: { session } } = await supabase.auth.getSession()
   return { Authorization: `Bearer ${session?.access_token || ''}` }
+}
+
+async function handleFnError(error) {
+  if (error?.context?.json) {
+    try {
+      const errBody = await error.context.json()
+      throw new Error(errBody.error || error.message)
+    } catch (_) {}
+  }
+  throw error
 }
 
 export function useAdminManageUser() {
@@ -25,13 +34,7 @@ export function useAdminManageUser() {
         group_id: data.group_id || null,
       }
     })
-    if (error) {
-      if (error instanceof FunctionsHttpError) {
-        const errBody = await error.context.json()
-        throw new Error(errBody.error || error.message)
-      }
-      throw error
-    }
+    if (error) await handleFnError(error)
     if (result?.error) throw new Error(result.error)
     return result
   }
@@ -42,13 +45,7 @@ export function useAdminManageUser() {
       headers: authHeader,
       body: { _action: 'update', user_id: userId, ...data }
     })
-    if (error) {
-      if (error instanceof FunctionsHttpError) {
-        const errBody = await error.context.json()
-        throw new Error(errBody.error || error.message)
-      }
-      throw error
-    }
+    if (error) await handleFnError(error)
     if (result?.error) throw new Error(result.error)
     return result
   }

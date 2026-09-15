@@ -21,9 +21,6 @@ const scanLoading = ref(false)
 const confirmLoading = ref(false)
 const pageStep = ref('idle')
 const cameraStarted = ref(false)
-const toastMsg = ref('')
-const toastType = ref('success')
-const toastVisible = ref(false)
 const showBukaForm = ref(false)
 const judulMateri = ref('')
 const bukaLoading = ref(false)
@@ -40,13 +37,6 @@ const terabsenCount = computed(() => sesiAttendances.value.length)
 function formatTime(iso) {
   if (!iso) return '-'
   return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-}
-
-function showToast(message, type = 'success') {
-  toastMsg.value = message
-  toastType.value = type
-  toastVisible.value = true
-  setTimeout(() => { toastVisible.value = false }, 3500)
 }
 
 async function loadSesiAttendances() {
@@ -101,7 +91,7 @@ async function onScanResult(token) {
     const { data, error } = await supabase.rpc('get_profile_by_token', { token })
     if (error) throw error
     if (!data || data.length === 0) {
-      showToast('QR Code tidak dikenal', 'error')
+      appStore.showToast('QR Code tidak dikenal', 'error')
       await stopScanner()
       pageStep.value = 'ready'
       return
@@ -119,7 +109,7 @@ async function onScanResult(token) {
     scannedProfile.value = member
     pageStep.value = 'result'
   } catch (e) {
-    showToast(e.message, 'error')
+    appStore.showToast(e.message, 'error')
     await stopScanner()
     pageStep.value = 'ready'
   } finally {
@@ -133,17 +123,17 @@ async function handleConfirm(status = 'hadir') {
   try {
     await catatAbsen(sesiAktif.value.id, scannedProfile.value.id, authStore.user.id, status)
     const label = { hadir: 'Hadir', izin: 'Izin', alpa: 'Alpa' }
-    showToast(`${scannedProfile.value.nama} — ${label[status]}`, 'success')
+    appStore.showToast(`${scannedProfile.value.nama} — ${label[status]}`, 'success')
     scannedProfile.value = null
     existingAtt.value = null
     await loadSesiAttendances()
     await handleStartCamera()
   } catch (e) {
     if (e.message?.includes('duplicate') || e.message?.includes('unique') || e.message?.includes('violates')) {
-      showToast('Sudah diabsen sebelumnya', 'warning')
+      appStore.showToast('Sudah diabsen sebelumnya', 'warning')
       await loadSesiAttendances()
     } else {
-      showToast(e.message, 'error')
+      appStore.showToast(e.message, 'error')
     }
     scannedProfile.value = null
     existingAtt.value = null
@@ -164,13 +154,13 @@ async function handleUpdateStatus(status) {
       .eq('user_id', scannedProfile.value.id)
     if (error) throw error
     const label = { hadir: 'Hadir', izin: 'Izin', alpa: 'Alpa' }
-    showToast(`${scannedProfile.value.nama} diubah ke ${label[status]}`)
+    appStore.showToast(`${scannedProfile.value.nama} diubah ke ${label[status]}`)
     scannedProfile.value = null
     existingAtt.value = null
     await loadSesiAttendances()
     await handleStartCamera()
   } catch (e) {
-    showToast(e.message, 'error')
+    appStore.showToast(e.message, 'error')
   } finally {
     updateLoading.value = false
   }
@@ -186,13 +176,13 @@ async function handleDeleteAtt() {
       .eq('session_id', sesiAktif.value.id)
       .eq('user_id', scannedProfile.value.id)
     if (error) throw error
-    showToast(`Catatan ${scannedProfile.value.nama} dihapus`)
+    appStore.showToast(`Catatan ${scannedProfile.value.nama} dihapus`)
     scannedProfile.value = null
     existingAtt.value = null
     await loadSesiAttendances()
     await handleStartCamera()
   } catch (e) {
-    showToast(e.message, 'error')
+    appStore.showToast(e.message, 'error')
   } finally {
     updateLoading.value = false
   }
@@ -214,7 +204,7 @@ async function handleBukaSesi() {
   bukaLoading.value = true
   try {
     await bukaSesi(adminGroupId.value, judulMateri.value, authStore.profile?.id || authStore.user?.id)
-    showToast('Sesi liqa dibuka')
+    appStore.showToast('Sesi liqa dibuka')
     showBukaForm.value = false
     judulMateri.value = ''
     await loadSesiAttendances()
@@ -222,9 +212,9 @@ async function handleBukaSesi() {
     pageStep.value = 'ready'
   } catch (e) {
     if (e.message?.includes('one_open_session_per_group') || e.message?.includes('duplicate')) {
-      showToast('Sudah ada sesi aktif untuk kelompok ini', 'warning')
+      appStore.showToast('Sudah ada sesi aktif untuk kelompok ini', 'warning')
     } else {
-      showToast(e.message, 'error')
+      appStore.showToast(e.message, 'error')
     }
   } finally {
     bukaLoading.value = false
@@ -238,10 +228,10 @@ async function handleAkhiriSesi() {
     await akhiriSesi(sesiAktif.value.id)
     if (realtimeSub) { supabase.removeChannel(realtimeSub); realtimeSub = null }
     sesiAttendances.value = []
-    showToast('Sesi liqa diakhiri')
+    appStore.showToast('Sesi liqa diakhiri')
     pageStep.value = 'idle'
   } catch (e) {
-    showToast(e.message, 'error')
+    appStore.showToast(e.message, 'error')
   } finally {
     akhiriLoading.value = false
   }
@@ -259,15 +249,6 @@ onUnmounted(() => {
 
 <template>
   <div class="flex flex-col min-h-[70vh]">
-    <!-- Toast -->
-    <Teleport to="body">
-      <div v-if="toastVisible"
-        class="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-2xl shadow-xl text-sm font-medium text-white transition-all duration-300 animate-slide-down pointer-events-none"
-        :class="toastType === 'error' ? 'bg-red-500' : toastType === 'warning' ? 'bg-amber-500' : 'bg-brand-600'">
-        {{ toastMsg }}
-      </div>
-    </Teleport>
-
     <!-- Buka Sesi Form Modal -->
     <Teleport to="body">
       <div v-if="showBukaForm" class="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4 animate-fade-in"

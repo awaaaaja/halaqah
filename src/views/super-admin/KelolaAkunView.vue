@@ -19,6 +19,7 @@ const showEditModal = ref(false)
 const editTarget = ref(null)
 const saving = ref(false)
 const deleting = ref(new Set())
+const confirmToggleUser = ref(null)
 
 const createForm = ref({
   email: '', password: '', nama: '', nim: '', prodi: '', kelas: '',
@@ -97,7 +98,10 @@ async function handleEdit() {
   }
 }
 
-async function toggleStatus(user) {
+async function handleToggleStatus() {
+  const user = confirmToggleUser.value
+  if (!user) return
+  confirmToggleUser.value = null
   const newStatus = user.status_akun === 'aktif' ? 'nonaktif' : 'aktif'
   const label = newStatus === 'aktif' ? 'diaktifkan' : 'dinonaktifkan'
   try {
@@ -191,7 +195,7 @@ onMounted(loadData)
             class="text-xs text-emerald-700 font-medium hover:text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors">
             Edit
           </button>
-          <button @click="toggleStatus(u)"
+          <button @click="confirmToggleUser = u"
             class="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
             :class="u.status_akun === 'aktif' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'">
             {{ u.status_akun === 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}
@@ -357,5 +361,40 @@ onMounted(loadData)
         </div>
       </div>
     </div>
+
+    <!-- Toggle Status Confirmation Modal -->
+    <Teleport to="body">
+      <div v-if="confirmToggleUser"
+        class="fixed inset-0 bg-black/40 z-[999] flex items-end md:items-center justify-center p-4 animate-fade-in"
+        @click.self="confirmToggleUser = null">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-slide-up">
+          <div class="text-center mb-5">
+            <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
+              :class="confirmToggleUser.status_akun === 'aktif' ? 'bg-red-50' : 'bg-green-50'">
+              <svg class="w-7 h-7" :class="confirmToggleUser.status_akun === 'aktif' ? 'text-red-500' : 'text-green-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800">
+              {{ confirmToggleUser.status_akun === 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }} Akun?
+            </h3>
+            <p class="text-sm text-gray-500 mt-1">
+              {{ confirmToggleUser.nama }} ({{ confirmToggleUser.email }})
+            </p>
+          </div>
+          <div class="flex gap-3">
+            <button @click="confirmToggleUser = null"
+              class="flex-1 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-all active:scale-[0.98]">
+              Batal
+            </button>
+            <button @click="handleToggleStatus"
+              class="flex-1 py-3 rounded-xl font-medium transition-all active:scale-[0.98] shadow-sm text-white"
+              :class="confirmToggleUser.status_akun === 'aktif' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'">
+              {{ confirmToggleUser.status_akun === 'aktif' ? 'Nonaktifkan' : 'Aktifkan' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

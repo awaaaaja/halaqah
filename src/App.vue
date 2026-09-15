@@ -21,7 +21,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <component :is="layout">
+  <div v-if="authStore.loading" class="min-h-screen flex items-center justify-center bg-slate-50">
+    <div class="flex flex-col items-center gap-3">
+      <div class="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      <p class="text-sm text-slate-500 font-medium">Memuat...</p>
+    </div>
+  </div>
+
+  <component v-else :is="layout">
     <router-view />
   </component>
 

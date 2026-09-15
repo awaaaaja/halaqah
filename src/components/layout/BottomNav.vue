@@ -75,13 +75,16 @@ const menuMap = {
 const menu = computed(() => menuMap[role.value] || [])
 
 function isActive(itemRoute) {
-  if (itemRoute === '/dashboard') {
-    return route.path === '/dashboard' || (route.path.startsWith('/dashboard/') && !route.path.includes('murabbi') && !route.path.includes('kelompok') && !route.path.includes('akun') && !route.path.includes('approval') && !route.path.includes('laporan') && !route.path.includes('pengaturan'))
+  const nameMap = {
+    '/dashboard': 'Dashboard',
+    '/dashboard/murabbi': 'KelolaMurabbi',
+    '/dashboard/kelompok': 'KelolaKelompok',
+    '/dashboard/akun': 'KelolaAkun',
+    '/dashboard/approval': 'ApprovalAnggota',
+    '/dashboard/laporan': 'Laporan',
+    '/dashboard/pengaturan': 'Pengaturan',
   }
-  if (itemRoute === '/dashboard/akun') return route.path === '/dashboard/akun'
-  if (itemRoute === '/dashboard/approval') return route.path === '/dashboard/approval'
-  if (itemRoute === '/dashboard/murabbi' && route.path === '/dashboard/murabbi') return true
-  if (itemRoute === '/dashboard/kelompok' && route.path === '/dashboard/kelompok') return true
+  if (nameMap[itemRoute]) return route.name === nameMap[itemRoute]
   return route.path === itemRoute
 }
 

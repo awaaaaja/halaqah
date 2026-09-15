@@ -214,7 +214,6 @@ onMounted(() => {
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendances' }, () => {
       loadRealtimeCount()
       loadRecentAttendances()
-      loadData()
     })
     .subscribe()
 })

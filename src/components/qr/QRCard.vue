@@ -40,6 +40,7 @@ async function generateQR() {
 async function downloadCard() {
   downloading.value = true
   try {
+    await document.fonts.ready
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     const width = 600
