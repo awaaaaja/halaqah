@@ -354,6 +354,7 @@ async function main() {
       }
 
       try {
+        // Update groups.murabbi_id
         const { error } = await supabase
           .from('groups')
           .update({ murabbi_id: mentorId })
@@ -362,9 +363,20 @@ async function main() {
         if (error) {
           linkResults.failed++
           console.error(`  ❌ Failed to link mentor "${mentor}" to "${groupName}":`, error.message)
-        } else {
-          linkResults.created++
+          continue
         }
+
+        // Also set profiles.group_id so admin views work
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ group_id: groupId })
+          .eq('id', mentorId)
+
+        if (profileError) {
+          console.error(`  ⚠️ Failed to set group_id for "${mentor}":`, profileError.message)
+        }
+
+        linkResults.created++
       } catch (e) {
         linkResults.failed++
         console.error(`  ❌ Error linking:`, e.message)
