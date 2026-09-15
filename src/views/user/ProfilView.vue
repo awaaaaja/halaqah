@@ -8,6 +8,9 @@ const appStore = useAppStore()
 
 const profile = ref({ nama: '', email: '', nim: '', prodi: '', kelas: '', angkatan: '', no_hp: '' })
 const saving = ref(false)
+const showPasswordForm = ref(false)
+const passwordForm = ref({ new: '', confirm: '' })
+const passwordLoading = ref(false)
 
 onMounted(() => {
   if (authStore.profile) {
@@ -36,6 +39,28 @@ async function handleSave() {
     appStore.showToast(e.message, 'error')
   } finally {
     saving.value = false
+  }
+}
+
+async function handleChangePassword() {
+  if (passwordForm.value.new.length < 6) {
+    appStore.showToast('Password minimal 6 karakter', 'warning')
+    return
+  }
+  if (passwordForm.value.new !== passwordForm.value.confirm) {
+    appStore.showToast('Konfirmasi password tidak cocok', 'warning')
+    return
+  }
+  passwordLoading.value = true
+  try {
+    await authStore.updatePassword(passwordForm.value.new)
+    appStore.showToast('Password berhasil diubah')
+    showPasswordForm.value = false
+    passwordForm.value = { new: '', confirm: '' }
+  } catch (e) {
+    appStore.showToast(e.message, 'error')
+  } finally {
+    passwordLoading.value = false
   }
 }
 </script>
@@ -100,6 +125,29 @@ async function handleSave() {
           class="w-full py-3 bg-brand-600 text-white rounded-xl font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors shadow-sm">
           {{ saving ? 'Menyimpan...' : 'Simpan Perubahan' }}
         </button>
+
+        <button @click="showPasswordForm = !showPasswordForm"
+          class="w-full py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors">
+          {{ showPasswordForm ? 'Batal' : 'Ganti Password' }}
+        </button>
+
+        <div v-if="showPasswordForm" class="space-y-3 pt-2 border-t border-gray-100">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
+            <input v-model="passwordForm.new" type="password" required placeholder="Minimal 6 karakter"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
+            <input v-model="passwordForm.confirm" type="password" required
+              placeholder="Ulangi password baru"
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
+          </div>
+          <button @click="handleChangePassword" :disabled="passwordLoading || !passwordForm.new || !passwordForm.confirm"
+            class="w-full py-3 bg-brand-600 text-white rounded-xl font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors shadow-sm">
+            {{ passwordLoading ? 'Menyimpan...' : 'Ubah Password' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
