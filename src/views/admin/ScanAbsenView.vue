@@ -129,11 +129,11 @@ async function handleConfirm(status = 'hadir') {
     await loadSesiAttendances()
     await handleStartCamera()
   } catch (e) {
-    if (e.message?.includes('duplicate') || e.message?.includes('unique') || e.message?.includes('violates')) {
+    if (e.message?.includes('duplicate') || e.message?.includes('unique')) {
       appStore.showToast('Sudah diabsen sebelumnya', 'warning')
       await loadSesiAttendances()
     } else {
-      appStore.showToast(e.message, 'error')
+      appStore.showToast(e.message || 'Gagal menyimpan absen', 'error')
     }
     scannedProfile.value = null
     existingAtt.value = null
