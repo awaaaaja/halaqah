@@ -44,7 +44,7 @@ async function loadSesiAttendances() {
   attLoading.value = true
   const { data } = await supabase
     .from('attendances')
-    .select('user_id, status, waktu_absen, profiles(nama)')
+    .select('user_id, status, waktu_absen, profiles!attendances_user_id_fkey(nama)')
     .eq('session_id', sesiAktif.value.id)
     .order('waktu_absen', { ascending: false })
   sesiAttendances.value = data || []

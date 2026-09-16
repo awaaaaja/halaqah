@@ -64,7 +64,7 @@ async function loadData() {
   const sessionIds = sessions.map(s => s.id)
   const { data: atts } = await supabase
     .from('attendances')
-    .select('session_id, user_id, status, waktu_absen, profiles(nama, nim)')
+    .select('session_id, user_id, status, waktu_absen, profiles!attendances_user_id_fkey(nama, nim)')
     .in('session_id', sessionIds)
 
   const attMap = {}

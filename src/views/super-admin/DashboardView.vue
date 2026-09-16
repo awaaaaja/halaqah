@@ -215,7 +215,7 @@ async function openSesiDetail(s) {
   detailLoading.value = true
   const { data } = await supabase
     .from('attendances')
-    .select('user_id, status, waktu_absen, profiles(nama, nim)')
+    .select('user_id, status, waktu_absen, profiles!attendances_user_id_fkey(nama, nim)')
     .eq('session_id', s.id)
     .order('waktu_absen', { ascending: false })
   detailAttendances.value = data || []
