@@ -177,8 +177,9 @@ function json(data, status = 200) {
 }
 
 function cors() {
+  const origin = "https://halaqah-chi.vercel.app"
   return {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
   }

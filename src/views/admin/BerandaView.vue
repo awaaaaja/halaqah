@@ -199,24 +199,32 @@ async function handleAkhiriSesi() {
 
 let realtimeSub = null
 
+function subscribeRealtime() {
+  if (realtimeSub) supabase.removeChannel(realtimeSub)
+  if (!sesiAktif.value) { realtimeSub = null; return }
+  realtimeSub = supabase
+    .channel('attendances-realtime')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'attendances',
+      filter: `session_id=eq.${sesiAktif.value.id}`
+    }, () => {
+      loadRealtimeCount()
+      loadRecentAttendances()
+    })
+    .subscribe()
+}
+
 watch(adminGroupId, (id) => {
   if (id) loadData()
 }, { immediate: true })
 
 watch(sesiAktif, (s) => {
+  subscribeRealtime()
   if (s?.dibuka_at) startSessionTimer()
   else stopSessionTimer()
 }, { immediate: true })
-
-onMounted(() => {
-  realtimeSub = supabase
-    .channel('attendances-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendances' }, () => {
-      loadRealtimeCount()
-      loadRecentAttendances()
-    })
-    .subscribe()
-})
 
 onUnmounted(() => {
   if (realtimeSub) supabase.removeChannel(realtimeSub)
