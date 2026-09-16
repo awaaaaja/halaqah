@@ -86,7 +86,14 @@ async function handleEdit() {
   if (!editTarget.value) return
   saving.value = true
   try {
-    await updateUser(editTarget.value.id, editForm.value)
+    const payload = { ...editForm.value }
+    // Only send group_id if admin actually changed it — preserve existing
+    if (payload.group_id === (editTarget.value.group_id || '')) {
+      delete payload.group_id
+    } else if (payload.group_id === '') {
+      payload.group_id = null
+    }
+    await updateUser(editTarget.value.id, payload)
     appStore.showToast('Akun diperbarui')
     showEditModal.value = false
     editTarget.value = null
