@@ -108,7 +108,7 @@ async function handleCalculate() {
       totalNilai.value = data.total_nilai || 0
       gradeResult.value = getGrade(data.total_nilai || 0)
     }
-    appStore.showToast('Kehadiran & Amalan Yaumi dihitung')
+    appStore.showToast('Kehadiran (per sesi) & Amalan Yaumi dihitung')
   } catch (e) {
     appStore.showToast(e.message, 'error')
   } finally {
@@ -271,7 +271,7 @@ function gradeColor(grade) {
           <div class="grid grid-cols-2 gap-3 mb-3">
             <div class="bg-gray-50 rounded-xl p-3 text-center">
               <p class="text-lg font-bold text-gray-800">{{ kehadiran }}%</p>
-              <p class="text-[10px] text-gray-500">Kehadiran (10%)</p>
+              <p class="text-[10px] text-gray-500">Kehadiran Sesi (10%)</p>
             </div>
             <div class="bg-gray-50 rounded-xl p-3 text-center">
               <p class="text-lg font-bold text-gray-800">{{ amalanYaumi }}%</p>
