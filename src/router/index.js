@@ -187,6 +187,42 @@ const routes = [
     meta: { requiresAuth: true, role: 'super_admin' }
   },
   {
+    path: '/dashboard/asa',
+    name: 'PengaturanASA',
+    component: () => import('@/views/super-admin/PengaturanASAView.vue'),
+    meta: { requiresAuth: true, role: 'super_admin' }
+  },
+  {
+    path: '/dashboard/penilaian',
+    name: 'DashboardPenilaian',
+    component: () => import('@/views/super-admin/DashboardPenilaianView.vue'),
+    meta: { requiresAuth: true, role: 'super_admin' }
+  },
+  {
+    path: '/penilaian',
+    name: 'DaftarPenilaian',
+    component: () => import('@/views/admin/DaftarPenilaianView.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/penilaian/tambah',
+    name: 'TambahPenilaian',
+    component: () => import('@/views/admin/FormPenilaianView.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/penilaian/tambah/:userId',
+    name: 'EditPenilaian',
+    component: () => import('@/views/admin/FormPenilaianView.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/riwayat-penilaian',
+    name: 'RiwayatPenilaian',
+    component: () => import('@/views/user/RiwayatPenilaianView.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/views/NotFoundView.vue')

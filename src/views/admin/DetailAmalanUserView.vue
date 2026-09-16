@@ -63,10 +63,14 @@ const calendarDays = computed(() => {
     let cellClass = 'bg-gray-50 text-gray-300'
 
     if (log) {
-      const score = hitungSkorHarian(log)
-      if (score >= 17) cellClass = 'bg-emerald-500 text-white shadow-sm'
-      else if (score >= 10) cellClass = 'bg-amber-400 text-white shadow-sm'
-      else if (score > 0) cellClass = 'bg-red-400 text-white shadow-sm'
+      if (log.berhalangan) {
+        cellClass = 'bg-gray-300 text-white shadow-sm'
+      } else {
+        const score = hitungSkorHarian(log)
+        if (score >= 17) cellClass = 'bg-emerald-500 text-white shadow-sm'
+        else if (score >= 10) cellClass = 'bg-amber-400 text-white shadow-sm'
+        else if (score > 0) cellClass = 'bg-red-400 text-white shadow-sm'
+      }
     }
 
     days.push({ day: d, date: dateStr, cellClass, log })
@@ -179,11 +183,19 @@ async function exportPDF() {
         const m = { tepat_waktu: 'TW', terlambat: 'TL', qadha: 'Q', belum: '-' }
         return m[log[f]] || '-'
       }).join('/')
+      const tahajjud = log.tahajjud === 'tepat_waktu' ? 'TW' : log.tahajjud === 'terlambat' ? 'TL' : '-'
+      const quran = log.bacaan_quran && Object.keys(log.bacaan_quran).length > 0
+        ? `${log.bacaan_quran.surah}:${log.bacaan_quran.awal}-${log.bacaan_quran.akhir}`
+        : '-'
+      const berhalangan = log.berhalangan ? 'Ya' : '-'
       return [
         new Date(log.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
         shalat,
         log.shalat_dhuha ? 'Ya' : 'Tidak',
         log.jumlah_rakaat || '-',
+        tahajjud,
+        quran,
+        berhalangan,
         score
       ]
     })
@@ -191,7 +203,7 @@ async function exportPDF() {
     const startY = profile.value?.groups?.nama_kelompok ? 52 : 46
     doc.autoTable({
       startY,
-      head: [['Tanggal', 'Subuh/Dzuhur/Ashar/Maghrib/Isya', 'Dhuha', 'Rakaat', 'Skor']],
+      head: [['Tanggal', 'Shalat (S/D/A/M/I)', 'Dhuha', 'Rakaat', 'Tahajjud', 'Qur\'an', 'Berhal.', 'Skor']],
       body: rows,
       headStyles: {
         fillColor: [22, 163, 74],
@@ -403,7 +415,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="flex items-center justify-center gap-4 mt-4 text-[11px] text-gray-500">
+        <div class="flex items-center justify-center gap-3 mt-4 text-[11px] text-gray-500 flex-wrap">
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-sm bg-emerald-500"></span>
             <span>Tinggi</span>
@@ -415,6 +427,10 @@ onUnmounted(() => {
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-sm bg-red-400"></span>
             <span>Rendah</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-sm bg-gray-300"></span>
+            <span>Berhalangan</span>
           </div>
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-sm bg-gray-50 border border-gray-200"></span>
@@ -438,49 +454,71 @@ onUnmounted(() => {
           :key="log.tanggal"
           class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
         >
-          <p class="text-sm font-medium text-gray-800 mb-3">{{ formatDate(log.tanggal) }}</p>
+          <p class="text-sm font-medium text-gray-800 mb-3">
+            {{ formatDate(log.tanggal) }}
+            <span v-if="log.berhalangan" class="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200">
+              Berhalangan
+              <span v-if="log.alasan_berhalangan" class="text-amber-500">— {{ log.alasan_berhalangan }}</span>
+            </span>
+          </p>
 
-          <div class="grid grid-cols-5 gap-1.5 mb-3">
-            <div
-              v-for="(field, idx) in shalatFields"
-              :key="idx"
-              class="text-center"
-            >
-              <p class="text-[10px] text-gray-400 mb-1 capitalize">{{ field.replace('shalat_', '') }}</p>
-              <span
-                class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border"
-                :class="statusBadge(log[field])"
+          <div v-if="log.berhalangan" class="text-xs text-gray-400 italic mb-3">
+            Tidak ada catatan amalan (berhalangan)
+          </div>
+
+          <div v-else>
+            <div class="grid grid-cols-5 gap-1.5 mb-3">
+              <div
+                v-for="(field, idx) in shalatFields"
+                :key="idx"
+                class="text-center"
               >
-                {{ statusLabel(log[field]) }}
+                <p class="text-[10px] text-gray-400 mb-1 capitalize">{{ field.replace('shalat_', '') }}</p>
+                <span
+                  class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border"
+                  :class="statusBadge(log[field])"
+                >
+                  {{ statusLabel(log[field]) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 text-xs text-gray-600 border-t border-gray-50 pt-3">
+              <div class="flex items-center gap-1">
+                <span class="text-gray-400">Dhuha:</span>
+                <span :class="log.shalat_dhuha ? 'text-emerald-600 font-medium' : 'text-gray-400'">
+                  {{ log.shalat_dhuha ? 'Ya' : 'Tidak' }}
+                </span>
+              </div>
+              <div v-if="log.jumlah_rakaat" class="flex items-center gap-1">
+                <span class="text-gray-400">Rakaat:</span>
+                <span class="font-medium text-gray-700">{{ log.jumlah_rakaat }}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-gray-400">Tahajjud:</span>
+                <span :class="log.tahajjud === 'tepat_waktu' ? 'text-indigo-600 font-medium' : log.tahajjud === 'terlambat' ? 'text-amber-600 font-medium' : 'text-gray-400'">
+                  {{ log.tahajjud ? statusLabel(log.tahajjud) : 'Tidak' }}
+                </span>
+              </div>
+              <div v-if="log.bacaan_quran && Object.keys(log.bacaan_quran).length > 0" class="flex items-center gap-1">
+                <span class="text-gray-400">Qur'an:</span>
+                <span class="text-emerald-600 font-medium">{{ log.bacaan_quran.surah || '-' }}: {{ log.bacaan_quran.awal || '-' }}-{{ log.bacaan_quran.akhir || '-' }}</span>
+              </div>
+            </div>
+
+            <div v-if="getRawatibKeys(log.rawatib_qobliyah).length > 0" class="text-xs text-gray-600 mt-1.5">
+              <span class="text-gray-400">Rawatib Qobliyah:</span>
+              <span class="text-gray-700 ml-1">
+                {{ getRawatibKeys(log.rawatib_qobliyah).map(k => rawatibLabels[k] || k).join(', ') }}
               </span>
             </div>
-          </div>
 
-          <div class="flex flex-wrap gap-3 text-xs text-gray-600 border-t border-gray-50 pt-3">
-            <div class="flex items-center gap-1">
-              <span class="text-gray-400">Dhuha:</span>
-              <span :class="log.shalat_dhuha ? 'text-emerald-600 font-medium' : 'text-gray-400'">
-                {{ log.shalat_dhuha ? 'Ya' : 'Tidak' }}
+            <div v-if="getRawatibKeys(log.rawatib_badiyah).length > 0" class="text-xs text-gray-600 mt-0.5">
+              <span class="text-gray-400">Rawatib Badiyah:</span>
+              <span class="text-gray-700 ml-1">
+                {{ getRawatibKeys(log.rawatib_badiyah).map(k => rawatibLabels[k] || k).join(', ') }}
               </span>
             </div>
-            <div v-if="log.jumlah_rakaat" class="flex items-center gap-1">
-              <span class="text-gray-400">Rakaat:</span>
-              <span class="font-medium text-gray-700">{{ log.jumlah_rakaat }}</span>
-            </div>
-          </div>
-
-          <div v-if="getRawatibKeys(log.rawatib_qobliyah).length > 0" class="text-xs text-gray-600 mt-1.5">
-            <span class="text-gray-400">Rawatib Qobliyah:</span>
-            <span class="text-gray-700 ml-1">
-              {{ getRawatibKeys(log.rawatib_qobliyah).map(k => rawatibLabels[k] || k).join(', ') }}
-            </span>
-          </div>
-
-          <div v-if="getRawatibKeys(log.rawatib_badiyah).length > 0" class="text-xs text-gray-600 mt-0.5">
-            <span class="text-gray-400">Rawatib Badiyah:</span>
-            <span class="text-gray-700 ml-1">
-              {{ getRawatibKeys(log.rawatib_badiyah).map(k => rawatibLabels[k] || k).join(', ') }}
-            </span>
           </div>
 
           <div v-if="log.catatan_harian" class="mt-2 bg-gray-50 rounded-lg p-2.5 text-xs text-gray-600 italic leading-relaxed">

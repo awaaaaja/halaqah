@@ -58,7 +58,7 @@ const menuMap = {
     { label: 'Scan', icon: icons.scan, route: '/scan-absen' },
     { label: 'Anggota', icon: icons.group, route: '/anggota-saya' },
     { label: 'Monitoring', icon: icons.monitoring, route: '/monitoring-amalan' },
-    { label: 'Riwayat', icon: icons.history, route: '/riwayat-sesi' }
+    { label: 'Penilaian', icon: icons.document, route: '/penilaian' }
   ],
   super_admin: [
     { label: 'Dashboard', icon: icons.dashboard, route: '/dashboard' },
@@ -68,7 +68,9 @@ const menuMap = {
     { label: 'Monitoring', icon: icons.monitoring, route: '/monitoring-amalan' },
     { label: 'Approval', icon: icons.document, route: '/dashboard/approval' },
     { label: 'Laporan', icon: icons.document, route: '/dashboard/laporan' },
-    { label: 'Pengaturan', icon: icons.settings, route: '/dashboard/pengaturan' }
+    { label: 'ASA', icon: icons.settings, route: '/dashboard/asa' },
+    { label: 'Penilaian', icon: icons.document, route: '/dashboard/penilaian' },
+    { label: 'Set.', icon: icons.settings, route: '/dashboard/pengaturan' }
   ]
 }
 
@@ -82,6 +84,8 @@ function isActive(itemRoute) {
     '/dashboard/akun': 'KelolaAkun',
     '/dashboard/approval': 'ApprovalAnggota',
     '/dashboard/laporan': 'Laporan',
+    '/dashboard/asa': 'PengaturanASA',
+    '/dashboard/penilaian': 'DashboardPenilaian',
     '/dashboard/pengaturan': 'Pengaturan',
   }
   if (nameMap[itemRoute]) return route.name === nameMap[itemRoute]

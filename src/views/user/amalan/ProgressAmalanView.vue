@@ -190,6 +190,14 @@ const konsistensiWajib = computed(() => {
   return hitungKonsistensi(monthLogsSorted.value, 'shalat_wajib')
 })
 
+const konsistensiTahajjud = computed(() => {
+  return hitungKonsistensi(monthLogsSorted.value, 'tahajjud')
+})
+
+const konsistensiQuran = computed(() => {
+  return hitungKonsistensi(monthLogsSorted.value, 'quran')
+})
+
 async function loadMonth() {
   if (!authStore.user?.id) return
   const data = await getBulanan(authStore.user.id, tahun.value, bulan.value)
@@ -319,6 +327,14 @@ onMounted(async () => {
           <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
             <p class="text-2xl font-bold text-amber-600">{{ konsistensiDhuha }}%</p>
             <p class="text-xs text-gray-500 mt-1">Dhuha</p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-2xl font-bold text-indigo-600">{{ konsistensiTahajjud }}%</p>
+            <p class="text-xs text-gray-500 mt-1">Tahajjud</p>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-2xl font-bold text-emerald-600">{{ konsistensiQuran }}%</p>
+            <p class="text-xs text-gray-500 mt-1">Al-Qur'an</p>
           </div>
         </div>
 

@@ -115,13 +115,17 @@ async function loadData() {
     const summary = {}
     users.value.forEach(u => {
       const userLogs = logMap[u.id] || []
+      const activeLogs = userLogs.filter(l => !l.berhalangan)
       const totalHari = userLogs.length
+      const berhalanganCount = userLogs.filter(l => l.berhalangan).length
 
       let totalScore = 0
       let totalWajib = 0
       let totalTepatWaktu = 0
+      let tahajjudCount = 0
+      let quranCount = 0
 
-      userLogs.forEach(log => {
+      activeLogs.forEach(log => {
         totalScore += hitungSkorHarian(log)
 
         const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
@@ -129,15 +133,22 @@ async function loadData() {
           totalWajib++
           if (log[f] === 'tepat_waktu') totalTepatWaktu++
         })
+        if (log.tahajjud === 'tepat_waktu' || log.tahajjud === 'terlambat') tahajjudCount++
+        if (log.bacaan_quran && Object.keys(log.bacaan_quran).length > 0) quranCount++
       })
 
-      const rataRata = totalHari > 0 ? totalScore / totalHari : 0
+      const rataRata = activeLogs.length > 0 ? totalScore / activeLogs.length : 0
       const konsistensi = totalWajib > 0 ? Math.round((totalTepatWaktu / totalWajib) * 100) : 0
+      const tahajjudPct = activeLogs.length > 0 ? Math.round((tahajjudCount / activeLogs.length) * 100) : 0
+      const quranPct = activeLogs.length > 0 ? Math.round((quranCount / activeLogs.length) * 100) : 0
 
       summary[u.id] = {
         totalHari,
+        berhalanganCount,
         rataRata: Math.round(rataRata * 10) / 10,
         konsistensi,
+        tahajjudPct,
+        quranPct,
         maxSkor: AMALAN_SKOR_MAX
       }
     })
@@ -445,7 +456,7 @@ onUnmounted(() => {
             </svg>
           </div>
 
-          <div v-if="usersSummary[u.id]" class="grid grid-cols-3 gap-3 text-center mb-3">
+          <div v-if="usersSummary[u.id]" class="grid grid-cols-2 gap-3 text-center mb-3">
             <div class="bg-gray-50 rounded-xl py-2 px-1">
               <p class="text-lg font-bold text-gray-800">{{ usersSummary[u.id].totalHari }}</p>
               <p class="text-[10px] text-gray-500">Hari Tercatat</p>
@@ -455,14 +466,23 @@ onUnmounted(() => {
               <p class="text-[10px] text-gray-500">Rata-rata /{{ usersSummary[u.id].maxSkor }}</p>
             </div>
             <div class="bg-gray-50 rounded-xl py-2 px-1">
-              <p
-                class="text-lg font-bold"
-                :class="konsistensiColor(usersSummary[u.id].konsistensi)"
-              >
+              <p class="text-lg font-bold" :class="konsistensiColor(usersSummary[u.id].konsistensi)">
                 {{ usersSummary[u.id].konsistensi }}%
               </p>
-              <p class="text-[10px] text-gray-500">Konsistensi</p>
+              <p class="text-[10px] text-gray-500">Shalat Wajib</p>
             </div>
+            <div class="bg-gray-50 rounded-xl py-2 px-1">
+              <p class="text-lg font-bold text-indigo-600">{{ usersSummary[u.id].tahajjudPct }}%</p>
+              <p class="text-[10px] text-gray-500">Tahajjud</p>
+            </div>
+          </div>
+          <div v-if="usersSummary[u.id]" class="flex items-center gap-2 mb-2">
+            <span class="text-xs text-gray-500">Qur'an:</span>
+            <span class="text-xs font-medium text-emerald-600">{{ usersSummary[u.id].quranPct }}%</span>
+            <span v-if="usersSummary[u.id].berhalanganCount > 0" class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-medium border border-amber-200">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              {{ usersSummary[u.id].berhalanganCount }} hari berhalangan
+            </span>
           </div>
 
           <div v-if="usersSummary[u.id]" class="space-y-1">

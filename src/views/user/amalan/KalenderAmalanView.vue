@@ -50,12 +50,15 @@ function getDayScore(day) {
   const dateStr = `${tahun.value}-${String(bulan.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   const log = monthLogs.value.find(l => l.tanggal === dateStr)
   if (!log) return null
+  if (log.berhalangan) return { score: 0, berhalangan: true }
   return hitungSkorHarian(log)
 }
 
 function dayClass(day) {
   const score = getDayScore(day)
-  if (!score || score.score === 0) return ''
+  if (!score) return ''
+  if (score.berhalangan) return 'bg-gray-300 text-white'
+  if (score.score === 0) return ''
   if (score.score >= 20) return 'bg-emerald-500 text-white'
   if (score.score >= 10) return 'bg-amber-400 text-white'
   return 'bg-red-400 text-white'
@@ -63,7 +66,9 @@ function dayClass(day) {
 
 function dayIndicator(day) {
   const score = getDayScore(day)
-  if (!score || score.score === 0) return 'bg-gray-200'
+  if (!score) return 'bg-gray-200'
+  if (score.berhalangan) return 'bg-gray-400'
+  if (score.score === 0) return 'bg-gray-200'
   if (score.score >= 20) return 'bg-emerald-500'
   if (score.score >= 10) return 'bg-amber-400'
   return 'bg-red-400'
@@ -172,7 +177,7 @@ onMounted(async () => {
             ]">
             <span>{{ day }}</span>
             <!-- Dot indicator for non-empty days -->
-            <span v-if="!isFutureDay(day) && getDayScore(day) !== null && getDayScore(day).score > 0"
+            <span v-if="!isFutureDay(day) && getDayScore(day) !== null"
               class="absolute -bottom-0.5 w-1.5 h-1.5 rounded-full"
               :class="dayIndicator(day)">
             </span>
@@ -200,6 +205,10 @@ onMounted(async () => {
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-full bg-gray-200"></span>
             <span class="text-xs text-gray-600">Belum ada data</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+            <span class="text-xs text-gray-600">Berhalangan</span>
           </div>
         </div>
       </div>

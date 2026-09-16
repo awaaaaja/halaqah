@@ -41,7 +41,11 @@ export function useAmalan() {
       jumlah_rakaat: payload.jumlah_rakaat || null,
       rawatib_qobliyah: payload.rawatib_qobliyah || {},
       rawatib_badiyah: payload.rawatib_badiyah || {},
-      catatan_harian: payload.catatan_harian || ''
+      catatan_harian: payload.catatan_harian || '',
+      tahajjud: payload.tahajjud || 'belum',
+      bacaan_quran: payload.bacaan_quran || {},
+      berhalangan: payload.berhalangan || false,
+      alasan_berhalangan: payload.alasan_berhalangan || ''
     }
     const { data, error } = await supabase
       .from('daily_worship_logs')
@@ -79,12 +83,13 @@ export function useAmalan() {
   }
 
   function hitungKonsistensi(logs, type = 'shalat_wajib') {
-    const total = logs.length
+    const activeLogs = logs.filter(l => !l.berhalangan)
+    const total = activeLogs.length
     if (total === 0) return 0
     if (type === 'shalat_wajib') {
       const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
       let totalTepat = 0, totalAll = 0
-      logs.forEach(log => {
+      activeLogs.forEach(log => {
         wajibFields.forEach(f => {
           totalAll++
           if (log[f] === 'tepat_waktu') totalTepat++
@@ -93,7 +98,15 @@ export function useAmalan() {
       return totalAll > 0 ? Math.round((totalTepat / totalAll) * 100) : 0
     }
     if (type === 'dhuha') {
-      const done = logs.filter(l => l.shalat_dhuha).length
+      const done = activeLogs.filter(l => l.shalat_dhuha).length
+      return Math.round((done / total) * 100)
+    }
+    if (type === 'tahajjud') {
+      const done = activeLogs.filter(l => l.tahajjud === 'tepat_waktu' || l.tahajjud === 'terlambat').length
+      return Math.round((done / total) * 100)
+    }
+    if (type === 'quran') {
+      const done = activeLogs.filter(l => l.bacaan_quran && Object.keys(l.bacaan_quran).length > 0).length
       return Math.round((done / total) * 100)
     }
     return 0

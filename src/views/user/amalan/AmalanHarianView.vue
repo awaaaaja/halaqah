@@ -54,8 +54,16 @@ const form = ref({
   jumlah_rakaat: null,
   rawatib_qobliyah: {},
   rawatib_badiyah: {},
-  catatan_harian: ''
+  catatan_harian: '',
+  tahajjud: 'belum',
+  bacaan_quran: {},
+  berhalangan: false,
+  alasan_berhalangan: ''
 })
+
+const alasanOptions = ['Haid', 'Sakit', 'Bepergian', ' lainnya']
+
+const quranInput = ref({ surah: '', ayat_awal: '', ayat_akhir: '' })
 
 const score = computed(() => hitungSkorHarian(logData.value))
 
@@ -70,8 +78,13 @@ function resetForm() {
     jumlah_rakaat: null,
     rawatib_qobliyah: {},
     rawatib_badiyah: {},
-    catatan_harian: ''
+    catatan_harian: '',
+    tahajjud: 'belum',
+    bacaan_quran: {},
+    berhalangan: false,
+    alasan_berhalangan: ''
   }
+  quranInput.value = { surah: '', ayat_awal: '', ayat_akhir: '' }
 }
 
 function populateForm(log) {
@@ -89,7 +102,17 @@ function populateForm(log) {
     jumlah_rakaat: log.jumlah_rakaat || null,
     rawatib_qobliyah: log.rawatib_qobliyah || {},
     rawatib_badiyah: log.rawatib_badiyah || {},
-    catatan_harian: log.catatan_harian || ''
+    catatan_harian: log.catatan_harian || '',
+    tahajjud: log.tahajjud || 'belum',
+    bacaan_quran: log.bacaan_quran || {},
+    berhalangan: log.berhalangan || false,
+    alasan_berhalangan: log.alasan_berhalangan || ''
+  }
+  const bq = log.bacaan_quran || {}
+  quranInput.value = {
+    surah: bq.surah ? String(bq.surah) : '',
+    ayat_awal: bq.ayat_awal ? String(bq.ayat_awal) : '',
+    ayat_akhir: bq.ayat_akhir ? String(bq.ayat_akhir) : ''
   }
 }
 
@@ -134,7 +157,11 @@ async function doSave() {
       jumlah_rakaat: form.value.shalat_dhuha ? form.value.jumlah_rakaat : null,
       rawatib_qobliyah: form.value.rawatib_qobliyah,
       rawatib_badiyah: form.value.rawatib_badiyah,
-      catatan_harian: form.value.catatan_harian
+      catatan_harian: form.value.catatan_harian,
+      tahajjud: form.value.tahajjud,
+      bacaan_quran: form.value.bacaan_quran,
+      berhalangan: form.value.berhalangan,
+      alasan_berhalangan: form.value.alasan_berhalangan
     }
     const result = await upsertLog(authStore.user.id, tgl, payload)
     if (seq !== saveSeq) return
@@ -166,6 +193,24 @@ function toggleRawatib(type, waktu) {
     current[waktu] = true
   }
   form.value[key] = current
+  debouncedSave()
+}
+
+function updateQuran() {
+  const s = Number(quranInput.value.surah)
+  const awal = Number(quranInput.value.ayat_awal)
+  const akhir = Number(quranInput.value.ayat_akhir)
+  if (s >= 1 && s <= 114 && awal >= 1 && akhir >= awal) {
+    form.value.bacaan_quran = { surah: s, ayat_awal: awal, ayat_akhir: akhir }
+  } else {
+    form.value.bacaan_quran = {}
+  }
+  debouncedSave()
+}
+
+function toggleBerhalangan() {
+  form.value.berhalangan = !form.value.berhalangan
+  if (!form.value.berhalangan) form.value.alasan_berhalangan = ''
   debouncedSave()
 }
 
@@ -261,8 +306,52 @@ onUnmounted(() => {
 
     <!-- Form -->
     <div v-else class="space-y-4 pb-6">
+      <!-- Berhalangan Toggle -->
+      <div class="bg-white rounded-xl border shadow-sm p-4"
+        :class="form.berhalangan ? 'border-amber-200 bg-amber-50' : 'border-gray-100'">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5" :class="form.berhalangan ? 'text-amber-600' : 'text-gray-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>
+              <p class="text-sm font-semibold" :class="form.berhalangan ? 'text-amber-800' : 'text-gray-700'">Berhalangan Hari Ini</p>
+              <p class="text-xs" :class="form.berhalangan ? 'text-amber-600' : 'text-gray-400'">Haid, sakit, atau bepergian</p>
+            </div>
+          </div>
+          <button @click="toggleBerhalangan" :disabled="!isEditable"
+            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50"
+            :class="form.berhalangan ? 'bg-amber-500' : 'bg-gray-300'">
+            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm"
+              :class="form.berhalangan ? 'translate-x-6' : 'translate-x-1'"></span>
+          </button>
+        </div>
+        <div v-if="form.berhalangan" class="mt-3">
+          <select v-model="form.alasan_berhalangan" @change="debouncedSave"
+            :disabled="!isEditable"
+            class="w-full px-3 py-2 text-sm rounded-lg border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+            <option value="">Pilih alasan...</option>
+            <option v-for="a in alasanOptions" :key="a" :value="a">{{ a }}</option>
+          </select>
+          <input v-if="form.alasan_berhalangan === ' lainnya'" v-model="form.alasan_berhalangan"
+            @input="debouncedSave" placeholder="Tulis alasan..." :disabled="!isEditable"
+            class="w-full px-3 py-2 text-sm mt-2 rounded-lg border border-amber-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+        </div>
+      </div>
+
+      <!-- Berhalangan Badge -->
+      <div v-if="form.berhalangan" class="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
+        <div class="flex justify-center mb-2">
+          <svg class="w-10 h-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <p class="text-sm font-semibold text-gray-700">Hari Ini Berhalangan</p>
+        <p class="text-xs text-gray-500 mt-1">{{ form.alasan_berhalangan || 'Tidak ada alasan' }} — amalan tidak diwajibkan</p>
+      </div>
+
       <!-- 5 Waktu Shalat -->
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div v-if="!form.berhalangan" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
@@ -283,7 +372,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Shalat Dhuha -->
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div v-if="!form.berhalangan" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -320,7 +409,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Rawatib -->
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div v-if="!form.berhalangan" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -355,6 +444,57 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Shalat Tahajjud -->
+      <div v-if="!form.berhalangan" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          Shalat Tahajjud
+        </h2>
+        <div class="flex items-center justify-between py-1.5">
+          <label class="text-sm font-medium text-gray-700">Status</label>
+          <select v-model="form.tahajjud" @change="debouncedSave"
+            :disabled="!isEditable"
+            class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed capitalize">
+            <option v-for="opt in shalatOptions" :key="opt" :value="opt">{{ opt.replace(/_/g, ' ') }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Bacaan Al-Qur'an -->
+      <div v-if="!form.berhalangan" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+        <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          Bacaan Al-Qur'an
+        </h2>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Surah (1-114)</label>
+            <input type="number" v-model="quranInput.surah" min="1" max="114"
+              @change="updateQuran" :disabled="!isEditable" placeholder="1"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Ayat Awal</label>
+            <input type="number" v-model="quranInput.ayat_awal" min="1"
+              @change="updateQuran" :disabled="!isEditable" placeholder="1"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Ayat Akhir</label>
+            <input type="number" v-model="quranInput.ayat_akhir" min="1"
+              @change="updateQuran" :disabled="!isEditable" placeholder="10"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50" />
+          </div>
+        </div>
+        <p v-if="form.bacaan_quran && form.bacaan_quran.surah" class="text-xs text-emerald-600 mt-2">
+          Surah {{ form.bacaan_quran.surah }} Ayat {{ form.bacaan_quran.ayat_awal }}-{{ form.bacaan_quran.ayat_akhir }}
+        </p>
       </div>
 
       <!-- Catatan Harian -->
