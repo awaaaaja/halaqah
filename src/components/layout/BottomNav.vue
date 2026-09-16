@@ -85,7 +85,7 @@ function isActive(itemRoute) {
     '/dashboard/pengaturan': 'Pengaturan',
   }
   if (nameMap[itemRoute]) return route.name === nameMap[itemRoute]
-  return route.path === itemRoute
+  return route.path === itemRoute || route.path.startsWith(itemRoute + '/')
 }
 
 async function handleLogout() {
