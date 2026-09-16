@@ -145,11 +145,7 @@ async function handleLogout() {
     <!-- Brand -->
     <div class="px-6 pt-6 pb-4 border-b border-gray-100">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 flex items-center justify-center shadow-sm">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
+        <img src="/logo-halaqah.png" alt="Logo" class="w-9 h-9 rounded-xl object-cover shadow-sm" />
         <div>
           <p class="font-bold text-brand-900 text-sm">Absensi Liqa</p>
           <p class="text-[11px] text-gray-500 capitalize">{{ role === 'super_admin' ? 'Super Admin' : role === 'admin' ? 'Murabbi' : 'Anggota' }}</p>
