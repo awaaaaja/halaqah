@@ -19,8 +19,8 @@ export function useAdminManageUser() {
   async function createUser(data) {
     const authHeader = await getAuthHeader()
     const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-      headers: authHeader,
-      body: {
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         _action: 'create',
         email: data.email,
         password: data.password,
@@ -32,7 +32,7 @@ export function useAdminManageUser() {
         no_hp: data.no_hp || null,
         role: data.role,
         group_id: data.group_id || null,
-      }
+      })
     })
     if (error) await handleFnError(error)
     if (result?.error) throw new Error(result.error)
@@ -42,8 +42,8 @@ export function useAdminManageUser() {
   async function updateUser(userId, data) {
     const authHeader = await getAuthHeader()
     const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-      headers: authHeader,
-      body: { _action: 'update', user_id: userId, ...data }
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _action: 'update', user_id: userId, ...data })
     })
     if (error) await handleFnError(error)
     if (result?.error) throw new Error(result.error)
