@@ -43,8 +43,16 @@ Deno.serve(async (req) => {
       return json({ error: "Forbidden: only super_admin can use this function" }, 403)
     }
 
-    const body = await req.json()
+    const rawBody = await req.text()
+    console.log("DEBUG body:", rawBody)
+    let body
+    try {
+      body = JSON.parse(rawBody)
+    } catch (_) {
+      return json({ error: "Invalid JSON body", raw: rawBody.slice(0, 500) }, 400)
+    }
     const action = body._action || "create"
+    console.log("DEBUG action:", action, "keys:", Object.keys(body))
 
     if (action === "create") {
       return handleCreate(body, adminClient)
@@ -56,6 +64,7 @@ Deno.serve(async (req) => {
 
     return json({ error: `Unknown action: ${action}` }, 400)
   } catch (e) {
+    console.error("DEBUG catch:", e)
     return json({ error: "Internal error: " + (e?.message || e) }, 500)
   }
 })
