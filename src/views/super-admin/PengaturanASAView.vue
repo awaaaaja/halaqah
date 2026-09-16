@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAppStore } from '@/stores/appStore'
 import { usePenilaian } from '@/composables/usePenilaian'
 
@@ -13,12 +13,18 @@ const {
 const showForm = ref(false)
 const editing = ref(null)
 const saving = ref(false)
-const form = ref({ nama_acara: 'Adzkia Spiritual Academy', tahun: new Date().getFullYear(), tanggal: '' })
-const tanggalInput = ref('')
+const form = ref({ nama_acara: 'Adzkia Spiritual Academy', tahun: new Date().getFullYear() })
+const tanggalList = ref([])
 
 const sortedSettings = computed(() =>
   [...asaSettings.value].sort((a, b) => b.tahun - a.tahun)
 )
+
+watch(() => form.value.tahun, (val) => {
+  if (val && tanggalList.value.length === 0) {
+    tanggalList.value = [`${val}-07-10`]
+  }
+})
 
 onMounted(loadData)
 
@@ -30,8 +36,9 @@ async function loadData() {
 
 function openCreate() {
   editing.value = null
-  form.value = { nama_acara: 'Adzkia Spiritual Academy', tahun: new Date().getFullYear(), tanggal: '' }
-  tanggalInput.value = ''
+  const tahun = new Date().getFullYear()
+  form.value = { nama_acara: 'Adzkia Spiritual Academy', tahun }
+  tanggalList.value = [`${tahun}-07-10`]
   showForm.value = true
 }
 
@@ -39,20 +46,23 @@ function openEdit(item) {
   editing.value = item
   form.value = {
     nama_acara: item.nama_acara,
-    tahun: item.tahun,
-    tanggal: item.tanggal
+    tahun: item.tahun
   }
-  tanggalInput.value = (item.tanggal || []).join(', ')
+  tanggalList.value = [...(item.tanggal || [])]
   showForm.value = true
 }
 
-function parseTanggal(str) {
-  return str.split(',').map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s))
+function addDate() {
+  const tahun = form.value.tahun || new Date().getFullYear()
+  tanggalList.value.push(`${tahun}-07-10`)
+}
+
+function removeDate(idx) {
+  tanggalList.value.splice(idx, 1)
 }
 
 async function handleSave() {
-  const tanggal = parseTanggal(tanggalInput.value)
-  if (tanggal.length === 0) {
+  if (tanggalList.value.length === 0) {
     appStore.showToast('Minimal 1 tanggal harus diisi', 'error')
     return
   }
@@ -63,7 +73,7 @@ async function handleSave() {
       periode,
       nama_acara: form.value.nama_acara,
       tahun: form.value.tahun,
-      tanggal
+      tanggal: tanggalList.value
     }
     if (editing.value) {
       await updateAsaSettings(editing.value.id, payload)
@@ -104,7 +114,7 @@ async function handleDelete(item) {
 
 function formatDateArray(arr) {
   if (!arr || arr.length === 0) return '-'
-  return arr.map(d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })).join(', ')
+  return arr.map(d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })).join(' & ')
 }
 </script>
 
@@ -205,7 +215,7 @@ function formatDateArray(arr) {
       <div v-if="showForm"
         class="fixed inset-0 bg-black/40 z-[999] flex items-end md:items-center justify-center p-4 animate-fade-in"
         @click.self="showForm = false">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-slide-up">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-slide-up max-h-[85vh] overflow-y-auto">
           <h3 class="text-lg font-bold text-gray-800 mb-4">
             {{ editing ? 'Edit Periode ASA' : 'Tambah Periode ASA' }}
           </h3>
@@ -217,14 +227,42 @@ function formatDateArray(arr) {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
-              <input v-model.number="form.tahun" type="number" min="2024" max="2030"
-                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <select v-model.number="form.tahun"
+                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option v-for="y in [2024,2025,2026,2027,2028,2029,2030]" :key="y" :value="y">{{ y }}</option>
+              </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pelaksanaan</label>
-              <input v-model="tanggalInput" placeholder="2026-07-10, 2026-07-11"
-                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-              <p class="text-xs text-gray-400 mt-1">Pisahkan dengan koma. Format: YYYY-MM-DD</p>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-medium text-gray-700">Tanggal Pelaksanaan</label>
+                <button @click="addDate"
+                  class="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Tambah Tanggal
+                </button>
+              </div>
+              <div class="space-y-2">
+                <div v-for="(tgl, idx) in tanggalList" :key="idx" class="flex items-center gap-2">
+                  <input
+                    type="date"
+                    :value="tgl"
+                    @input="tanggalList[idx] = $event.target.value"
+                    class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                  />
+                  <button
+                    v-if="tanggalList.length > 1"
+                    @click="removeDate(idx)"
+                    class="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all shrink-0"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs text-gray-400 mt-2">Pilih tanggal pelaksanaan ASA. Bisa lebih dari 1 hari.</p>
             </div>
           </div>
           <div class="flex gap-3 mt-6">

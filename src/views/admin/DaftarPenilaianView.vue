@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import { usePenilaian } from '@/composables/usePenilaian'
@@ -15,35 +16,67 @@ const { loading, asaSettings, penilaianList, getAsaSettings, getAsaActive, getPe
 
 const selectedPeriode = ref('')
 const exporting = ref(false)
+const allUsers = ref([])
 const sortKey = ref('total_nilai')
 const sortDir = ref('desc')
 
+const mergedList = computed(() => {
+  const penilaianMap = {}
+  penilaianList.value.forEach(p => { penilaianMap[p.user_id] = p })
+
+  return allUsers.value.map(u => {
+    const p = penilaianMap[u.id]
+    return {
+      user_id: u.id,
+      nama: u.nama,
+      nim: u.nim,
+      has_penilaian: !!p,
+      kehadiran: p?.kehadiran || 0,
+      sikap_kedisiplinan: p?.sikap_kedisiplinan || 0,
+      keaktifan: p?.keaktifan || 0,
+      roadmap: p?.roadmap || 0,
+      posttest: p?.posttest || 0,
+      amalan_yaumi: p?.amalan_yaumi || 0,
+      total_nilai: p?.total_nilai || 0,
+      catatan_mentor: p?.catatan_mentor || ''
+    }
+  }).sort((a, b) => {
+    if (!a.has_penilaian && b.has_penilaian) return 1
+    if (a.has_penilaian && !b.has_penilaian) return -1
+    const aVal = a[sortKey.value] ?? 0
+    const bVal = b[sortKey.value] ?? 0
+    return sortDir.value === 'desc' ? bVal - aVal : aVal - bVal
+  })
+})
+
 onMounted(async () => {
+  loading.value = true
   await getAsaSettings()
   const active = await getAsaActive()
   if (active) selectedPeriode.value = active.periode
   await loadData()
+  loading.value = false
 })
 
 async function loadData() {
   if (!selectedPeriode.value) return
-  const groupId = authStore.profile?.role === 'admin' ? authStore.profile?.group_id : null
-  await getPenilaianBatch(selectedPeriode.value, groupId)
+  const groupId = authStore.profile?.group_id
+  const [penResult, userResult] = await Promise.all([
+    getPenilaianBatch(selectedPeriode.value, groupId),
+    supabase
+      .from('profiles')
+      .select('id, nama, nim')
+      .eq('group_id', groupId)
+      .eq('role', 'user')
+      .eq('status_akun', 'aktif')
+      .order('nama')
+  ])
+  allUsers.value = userResult.data || []
 }
 
 async function handlePeriodeChange() {
   await loadData()
 }
-
-const sortedList = computed(() => {
-  const list = [...penilaianList.value]
-  list.sort((a, b) => {
-    const aVal = a[sortKey.value] ?? 0
-    const bVal = b[sortKey.value] ?? 0
-    return sortDir.value === 'desc' ? bVal - aVal : aVal - bVal
-  })
-  return list
-})
 
 function toggleSort(key) {
   if (sortKey.value === key) {
@@ -75,35 +108,24 @@ function exportPDF() {
     doc.setTextColor(107, 114, 128)
     doc.text(`Periode: ${selectedPeriode.value}`, pageWidth / 2, 28, { align: 'center' })
 
-    const rows = sortedList.value.map((p, i) => {
+    const rows = mergedList.value.map((p, i) => {
+      if (!p.has_penilaian) return [i + 1, p.nama || '-', p.nim || '-', '-', '-', '-', '-', '-', '-', '-', '-', 'Belum']
       const g = getGrade(p.total_nilai)
       return [
-        i + 1,
-        p.nama || '-',
-        p.nim || '-',
-        p.nama_kelompok || '-',
-        `${p.kehadiran}%`,
-        `${p.sikap_kedisiplinan}`,
-        `${p.keaktifan}`,
-        `${p.roadmap}`,
-        `${p.posttest}`,
-        `${p.amalan_yaumi}%`,
-        `${p.total_nilai}`,
-        g.grade
+        i + 1, p.nama || '-', p.nim || '-',
+        `${p.kehadiran}%`, `${p.sikap_kedisiplinan}`, `${p.keaktifan}`,
+        `${p.roadmap}`, `${p.posttest}`, `${p.amalan_yaumi}%`,
+        `${p.total_nilai}`, g.grade, g.label
       ]
     })
 
     doc.autoTable({
       startY: 34,
-      head: [['No', 'Nama', 'NIM', 'Kelompok', 'Kehadiran', 'Sikap', 'Aktif', 'Roadmap', 'Posttest', 'Amalan', 'Total', 'Grade']],
+      head: [['No', 'Nama', 'NIM', 'Kehadiran', 'Sikap', 'Aktif', 'Roadmap', 'Posttest', 'Amalan', 'Total', 'Grade', 'Ket.']],
       body: rows,
       headStyles: { fillColor: [22, 163, 74], fontSize: 7 },
       bodyStyles: { fontSize: 7 },
-      alternateRowStyles: { fillColor: [240, 253, 244] },
-      columnStyles: {
-        0: { cellWidth: 10 },
-        11: { cellWidth: 14 }
-      }
+      alternateRowStyles: { fillColor: [240, 253, 244] }
     })
 
     doc.save(`penilaian-asa-${selectedPeriode.value}.pdf`)
@@ -124,7 +146,7 @@ function exportPDF() {
         <p class="text-sm text-gray-500 mt-1">Rekap penilaian anggota</p>
       </div>
       <button
-        v-if="sortedList.length > 0"
+        v-if="mergedList.length > 0"
         @click="exportPDF"
         :disabled="exporting"
         class="px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center gap-1.5"
@@ -151,6 +173,12 @@ function exportPDF() {
       </select>
     </div>
 
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm text-gray-500">
+        {{ mergedList.length }} anggota · {{ mergedList.filter(i => i.has_penilaian).length }} dinilai
+      </p>
+    </div>
+
     <div v-if="loading" class="text-center py-12 text-gray-500">
       <svg class="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -159,8 +187,8 @@ function exportPDF() {
       <span>Memuat data...</span>
     </div>
 
-    <div v-else-if="sortedList.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
-      <p class="text-sm text-gray-500">Belum ada data penilaian untuk periode ini.</p>
+    <div v-else-if="mergedList.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <p class="text-sm text-gray-500">Tidak ada anggota di kelompok ini.</p>
     </div>
 
     <div v-else class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -192,8 +220,8 @@ function exportPDF() {
           </thead>
           <tbody>
             <tr
-              v-for="(p, i) in sortedList"
-              :key="p.id"
+              v-for="(p, i) in mergedList"
+              :key="p.user_id"
               @click="router.push(`/penilaian/tambah/${p.user_id}`)"
               class="border-t border-gray-100 cursor-pointer hover:bg-emerald-50 transition-colors"
               :class="i % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
@@ -201,13 +229,28 @@ function exportPDF() {
               <td class="px-3 py-2.5 text-gray-500">{{ i + 1 }}</td>
               <td class="px-3 py-2.5 font-medium text-gray-800">{{ p.nama }}</td>
               <td class="px-3 py-2.5 text-gray-500">{{ p.nim || '-' }}</td>
-              <td class="px-3 py-2.5 text-gray-700">{{ p.kehadiran }}%</td>
-              <td class="px-3 py-2.5 text-gray-700">{{ p.sikap_kedisiplinan }}</td>
-              <td class="px-3 py-2.5 text-gray-700">{{ p.amalan_yaumi }}%</td>
-              <td class="px-3 py-2.5 font-bold text-gray-800">{{ p.total_nilai }}</td>
+              <td class="px-3 py-2.5 text-gray-700">
+                <span v-if="p.has_penilaian">{{ p.kehadiran }}%</span>
+                <span v-else class="text-gray-300">-</span>
+              </td>
+              <td class="px-3 py-2.5 text-gray-700">
+                <span v-if="p.has_penilaian">{{ p.sikap_kedisiplinan }}</span>
+                <span v-else class="text-gray-300">-</span>
+              </td>
+              <td class="px-3 py-2.5 text-gray-700">
+                <span v-if="p.has_penilaian">{{ p.amalan_yaumi }}%</span>
+                <span v-else class="text-gray-300">-</span>
+              </td>
+              <td class="px-3 py-2.5 font-bold text-gray-800">
+                <span v-if="p.has_penilaian">{{ p.total_nilai }}</span>
+                <span v-else class="text-gray-300">-</span>
+              </td>
               <td class="px-3 py-2.5">
-                <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="gradeColor(getGrade(p.total_nilai).grade)">
+                <span v-if="p.has_penilaian" class="px-2 py-0.5 rounded-full text-xs font-bold" :class="gradeColor(getGrade(p.total_nilai).grade)">
                   {{ getGrade(p.total_nilai).grade }}
+                </span>
+                <span v-else class="px-2 py-0.5 rounded-full text-xs font-medium text-gray-400 bg-gray-100">
+                  Belum
                 </span>
               </td>
             </tr>

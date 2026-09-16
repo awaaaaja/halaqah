@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '@/lib/supabase'
 import { useAppStore } from '@/stores/appStore'
 import { usePenilaian } from '@/composables/usePenilaian'
 import { getGrade } from '@/lib/grading'
@@ -13,33 +14,63 @@ const { loading, asaSettings, penilaianList, getAsaSettings, getAsaActive, getPe
 
 const selectedPeriode = ref('')
 const filterGroup = ref('')
-const allGroups = ref([])
 const exporting = ref(false)
+const allUsers = ref([])
 
 const gradeDistribution = computed(() => {
-  const dist = { A: 0, B: 0, C: 0, D: 0 }
-  penilaianList.value.forEach(p => {
-    const g = getGrade(p.total_nilai)
+  const dist = { A: 0, B: 0, C: 0, D: 0, belum: 0 }
+  mergedList.value.forEach(item => {
+    if (!item.has_penilaian) { dist.belum++; return }
+    const g = getGrade(item.total_nilai)
     dist[g.grade]++
   })
   return dist
 })
 
 const averageScore = computed(() => {
-  const list = penilaianList.value
-  if (list.length === 0) return 0
-  const sum = list.reduce((acc, p) => acc + (p.total_nilai || 0), 0)
-  return Math.round((sum / list.length) * 10) / 10
-})
-
-const filteredList = computed(() => {
-  if (!filterGroup.value) return penilaianList.value
-  return penilaianList.value.filter(p => p.nama_kelompok === filterGroup.value)
+  const graded = mergedList.value.filter(i => i.has_penilaian)
+  if (graded.length === 0) return 0
+  const sum = graded.reduce((acc, p) => acc + (p.total_nilai || 0), 0)
+  return Math.round((sum / graded.length) * 10) / 10
 })
 
 const uniqueGroups = computed(() => {
-  const groups = [...new Set(penilaianList.value.map(p => p.nama_kelompok).filter(Boolean))]
+  const groups = [...new Set(mergedList.value.map(p => p.nama_kelompok).filter(Boolean))]
   return groups.sort()
+})
+
+const mergedList = computed(() => {
+  const penilaianMap = {}
+  penilaianList.value.forEach(p => { penilaianMap[p.user_id] = p })
+
+  return allUsers.value.map(u => {
+    const p = penilaianMap[u.id]
+    return {
+      user_id: u.id,
+      nama: u.nama,
+      nim: u.nim,
+      nama_kelompok: u.groups?.nama_kelompok || '-',
+      has_penilaian: !!p,
+      kehadiran: p?.kehadiran || 0,
+      sikap_kedisiplinan: p?.sikap_kedisiplinan || 0,
+      keaktifan: p?.keaktifan || 0,
+      roadmap: p?.roadmap || 0,
+      posttest: p?.posttest || 0,
+      amalan_yaumi: p?.amalan_yaumi || 0,
+      total_nilai: p?.total_nilai || 0,
+      catatan_mentor: p?.catatan_mentor || '',
+      updated_at: p?.updated_at || null
+    }
+  }).sort((a, b) => {
+    if (!a.has_penilaian && b.has_penilaian) return 1
+    if (a.has_penilaian && !b.has_penilaian) return -1
+    return (b.total_nilai || 0) - (a.total_nilai || 0)
+  })
+})
+
+const filteredList = computed(() => {
+  if (!filterGroup.value) return mergedList.value
+  return mergedList.value.filter(p => p.nama_kelompok === filterGroup.value)
 })
 
 onMounted(async () => {
@@ -47,17 +78,22 @@ onMounted(async () => {
   await getAsaSettings()
   const active = await getAsaActive()
   if (active) selectedPeriode.value = active.periode
-  const { data } = await supabase.from('groups').select('id, nama_kelompok').order('nama_kelompok')
-  allGroups.value = data || []
   await loadData()
   loading.value = false
 })
 
-import { supabase } from '@/lib/supabase'
-
 async function loadData() {
   if (!selectedPeriode.value) return
-  await getPenilaianBatch(selectedPeriode.value)
+  const [penResult, userResult] = await Promise.all([
+    getPenilaianBatch(selectedPeriode.value),
+    supabase
+      .from('profiles')
+      .select('id, nama, nim, group_id, groups(nama_kelompok)')
+      .eq('role', 'user')
+      .eq('status_akun', 'aktif')
+      .order('nama')
+  ])
+  allUsers.value = userResult.data || []
 }
 
 async function handlePeriodeChange() {
@@ -94,8 +130,9 @@ function exportPDF() {
     doc.text(`Periode: ${selectedPeriode.value} · Rata-rata: ${averageScore} · Total: ${filteredList.value.length} anggota`, pageWidth / 2, 28, { align: 'center' })
 
     const rows = filteredList.value.map((p, i) => {
+      if (!p.has_penilaian) return [i + 1, p.nama || '-', p.nim || '-', p.nama_kelompok, '-', '-', 'Belum dinilai']
       const g = getGrade(p.total_nilai)
-      return [i + 1, p.nama || '-', p.nim || '-', p.nama_kelompok || '-', `${p.total_nilai}`, g.grade, g.label]
+      return [i + 1, p.nama || '-', p.nim || '-', p.nama_kelompok, `${p.total_nilai}`, g.grade, g.label]
     })
 
     doc.autoTable({
@@ -155,7 +192,9 @@ function exportPDF() {
             class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
           >
             <option value="">-- Pilih Periode --</option>
-            <option v-for="s in asaSettings" :key="s.id" :value="s.periode">{{ s.periode }}</option>
+            <option v-for="s in asaSettings" :key="s.id" :value="s.periode">
+              {{ s.periode }} {{ s.is_active ? '(Aktif)' : '' }}
+            </option>
           </select>
           <select
             v-model="filterGroup"
@@ -167,17 +206,21 @@ function exportPDF() {
         </div>
       </div>
 
-      <div class="grid grid-cols-3 gap-3 mb-5">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 text-center">
-          <p class="text-2xl font-bold text-emerald-600">{{ filteredList.length }}</p>
+      <div class="grid grid-cols-4 gap-3 mb-5">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <p class="text-2xl font-bold text-emerald-600">{{ mergedList.length }}</p>
           <p class="text-[10px] text-gray-500 mt-0.5">Total Anggota</p>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 text-center">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
           <p class="text-2xl font-bold text-blue-600">{{ averageScore }}</p>
           <p class="text-[10px] text-gray-500 mt-0.5">Rata-rata</p>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 text-center">
-          <p class="text-2xl font-bold text-amber-600">{{ gradeDistribution.A }}</p>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <p class="text-2xl font-bold text-indigo-600">{{ mergedList.filter(i => i.has_penilaian).length }}/{{ mergedList.length }}</p>
+          <p class="text-[10px] text-gray-500 mt-0.5">Dinilai</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+          <p class="text-2xl font-bold text-emerald-600">{{ gradeDistribution.A }}</p>
           <p class="text-[10px] text-gray-500 mt-0.5">Grade A</p>
         </div>
       </div>
@@ -192,7 +235,7 @@ function exportPDF() {
       </div>
 
       <div v-if="filteredList.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-100 shadow-sm">
-        <p class="text-sm text-gray-500">Belum ada data penilaian.</p>
+        <p class="text-sm text-gray-500">Belum ada data anggota.</p>
       </div>
 
       <div v-else class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -212,21 +255,30 @@ function exportPDF() {
             <tbody>
               <tr
                 v-for="(p, i) in filteredList"
-                :key="p.id"
+                :key="p.user_id"
                 class="border-t border-gray-100 hover:bg-emerald-50 transition-colors"
                 :class="i % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
               >
                 <td class="px-3 py-2.5 text-gray-500">{{ i + 1 }}</td>
                 <td class="px-3 py-2.5 font-medium text-gray-800">{{ p.nama }}</td>
                 <td class="px-3 py-2.5 text-gray-500">{{ p.nim || '-' }}</td>
-                <td class="px-3 py-2.5 text-gray-500">{{ p.nama_kelompok || '-' }}</td>
-                <td class="px-3 py-2.5 font-bold text-gray-800">{{ p.total_nilai }}</td>
+                <td class="px-3 py-2.5 text-gray-500">{{ p.nama_kelompok }}</td>
+                <td class="px-3 py-2.5 font-bold text-gray-800">
+                  <span v-if="p.has_penilaian">{{ p.total_nilai }}</span>
+                  <span v-else class="text-gray-300">-</span>
+                </td>
                 <td class="px-3 py-2.5">
-                  <span class="px-2 py-0.5 rounded-full text-xs font-bold" :class="gradeColor(getGrade(p.total_nilai).grade)">
+                  <span v-if="p.has_penilaian" class="px-2 py-0.5 rounded-full text-xs font-bold" :class="gradeColor(getGrade(p.total_nilai).grade)">
                     {{ getGrade(p.total_nilai).grade }}
                   </span>
+                  <span v-else class="px-2 py-0.5 rounded-full text-xs font-medium text-gray-400 bg-gray-100">
+                    Belum
+                  </span>
                 </td>
-                <td class="px-3 py-2.5 text-gray-600 text-xs">{{ getGrade(p.total_nilai).label }}</td>
+                <td class="px-3 py-2.5 text-gray-600 text-xs">
+                  <span v-if="p.has_penilaian">{{ getGrade(p.total_nilai).label }}</span>
+                  <span v-else class="text-gray-400 italic">Belum dinilai</span>
+                </td>
               </tr>
             </tbody>
           </table>
