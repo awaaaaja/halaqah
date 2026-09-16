@@ -1,25 +1,22 @@
 import { supabase } from '@/lib/supabase'
 
+const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`
+
 async function getAuthHeader() {
   const { data: { session } } = await supabase.auth.getSession()
-  return { Authorization: `Bearer ${session?.access_token || ''}` }
-}
-
-async function handleFnError(error) {
-  if (error?.context?.json) {
-    try {
-      const errBody = await error.context.json()
-      throw new Error(errBody.error || error.message)
-    } catch (_) {}
+  return {
+    Authorization: `Bearer ${session?.access_token || ''}`,
+    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
   }
-  throw error
 }
 
 export function useAdminManageUser() {
   async function createUser(data) {
-    const authHeader = await getAuthHeader()
-    const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-      headers: { ...authHeader, 'Content-Type': 'application/json' },
+    const headers = await getAuthHeader()
+    const res = await fetch(FN_URL, {
+      method: 'POST',
+      headers,
       body: JSON.stringify({
         _action: 'create',
         email: data.email,
@@ -32,21 +29,22 @@ export function useAdminManageUser() {
         no_hp: data.no_hp || null,
         role: data.role,
         group_id: data.group_id || null,
-      })
+      }),
     })
-    if (error) await handleFnError(error)
-    if (result?.error) throw new Error(result.error)
+    const result = await res.json()
+    if (!res.ok || result.error) throw new Error(result.error || `HTTP ${res.status}`)
     return result
   }
 
   async function updateUser(userId, data) {
-    const authHeader = await getAuthHeader()
-    const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
-      headers: { ...authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _action: 'update', user_id: userId, ...data })
+    const headers = await getAuthHeader()
+    const res = await fetch(FN_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ _action: 'update', user_id: userId, ...data }),
     })
-    if (error) await handleFnError(error)
-    if (result?.error) throw new Error(result.error)
+    const result = await res.json()
+    if (!res.ok || result.error) throw new Error(result.error || `HTTP ${res.status}`)
     return result
   }
 
