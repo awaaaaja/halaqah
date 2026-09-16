@@ -1,4 +1,4 @@
-const CACHE_NAME = 'absensi-liqa-v2';
+const CACHE_NAME = 'absensi-liqa-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -13,11 +13,13 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('supabase')) return;
 
   const url = new URL(event.request.url);
 
-  // HTML: network-first (never serve stale HTML with old bundle hashes)
+  // Supabase API: never cache, always network
+  if (url.hostname.includes('supabase')) return;
+
+  // HTML navigations: network-first (prevents stale bundle refs)
   if (event.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -25,10 +27,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // JS/CSS: skip — Vercel serves with immutable hashed filenames
-  if (url.pathname.match(/\.(js|css)$/)) return;
+  // JS/CSS: network-first (Vite hashed filenames change per deploy)
+  if (url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
-  // Everything else: cache-first
+  // Images/fonts: cache-first
   event.respondWith(
     caches.match(event.request).then((cached) =>
       cached || fetch(event.request).then((response) => {
