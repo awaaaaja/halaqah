@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
 
 const routes = [
   {
@@ -235,24 +236,14 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const { data: { session } } = await supabase.auth.getSession()
+  const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !session) {
+  if (to.meta.requiresAuth && !authStore.user) {
     return next('/login')
   }
 
-  if (session) {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role, status_akun')
-      .eq('id', session.user.id)
-      .maybeSingle()
-
-    if (profileError) {
-      console.error('[router] load profile:', profileError.message)
-      await supabase.auth.signOut()
-      return next('/login')
-    }
+  if (authStore.user) {
+    const profile = authStore.profile
 
     const redirectMap = {
       user: '/qr-saya',
