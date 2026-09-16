@@ -238,6 +238,15 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
+  if (authStore.loading) {
+    await new Promise(resolve => {
+      const unwatch = authStore.$subscribe(() => {
+        if (!authStore.loading) { unwatch(); resolve() }
+      })
+      if (!authStore.loading) { unwatch(); resolve() }
+    })
+  }
+
   if (to.meta.requiresAuth && !authStore.user) {
     return next('/login')
   }
@@ -252,7 +261,6 @@ router.beforeEach(async (to, from, next) => {
     }
 
     if (!profile) {
-      await supabase.auth.signOut()
       return next('/login')
     }
 
