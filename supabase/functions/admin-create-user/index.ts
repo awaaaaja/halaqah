@@ -44,15 +44,13 @@ Deno.serve(async (req) => {
     }
 
     const rawBody = await req.text()
-    console.log("DEBUG body:", rawBody)
     let body
     try {
       body = JSON.parse(rawBody)
     } catch (_) {
-      return json({ error: "Invalid JSON body", raw: rawBody.slice(0, 500) }, 400)
+      return json({ error: "Invalid JSON body" }, 400)
     }
     const action = body._action || "create"
-    console.log("DEBUG action:", action, "keys:", Object.keys(body))
 
     if (action === "create") {
       return handleCreate(body, adminClient)
@@ -64,7 +62,6 @@ Deno.serve(async (req) => {
 
     return json({ error: `Unknown action: ${action}` }, 400)
   } catch (e) {
-    console.error("DEBUG catch:", e)
     return json({ error: "Internal error: " + (e?.message || e) }, 500)
   }
 })
@@ -144,7 +141,11 @@ async function handleUpdate(body, adminClient) {
     }
     payload.role = role
   }
-  if (group_id !== undefined) payload.group_id = group_id || null
+  // Only update group_id if it's a valid UUID — empty string or null means "preserve existing"
+  // To explicitly remove from group, send group_id: null (not empty string)
+  if (group_id !== undefined && group_id !== null && group_id !== '' && typeof group_id === 'string' && group_id.length > 0) {
+    payload.group_id = group_id
+  }
   if (status_akun !== undefined) {
     const validStatuses = ["pending", "aktif", "nonaktif"]
     if (!validStatuses.includes(status_akun)) {
