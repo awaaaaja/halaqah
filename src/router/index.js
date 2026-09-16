@@ -214,7 +214,8 @@ router.beforeEach(async (to, from, next) => {
 
     if (profileError) {
       console.error('[router] load profile:', profileError.message)
-      return next()
+      await supabase.auth.signOut()
+      return next('/login')
     }
 
     const redirectMap = {

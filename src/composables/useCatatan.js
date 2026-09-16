@@ -19,20 +19,30 @@ export function useCatatan() {
     if (filters.tanggal) query = query.eq('tanggal', filters.tanggal)
     if (filters.lokasi) query = query.eq('lokasi', filters.lokasi)
     if (filters.tag) query = query.contains('tags', [filters.tag])
-    const { data } = await query
-    daftarCatatan.value = data || []
+    const { data, error } = await query
+    if (error) {
+      console.error('[useCatatan] fetchAll:', error.message)
+      daftarCatatan.value = []
+    } else {
+      daftarCatatan.value = data || []
+    }
     loading.value = false
     return data
   }
 
   async function fetchOne(id) {
     loading.value = true
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notes')
       .select('*')
       .eq('id', id)
       .single()
-    detailCatatan.value = data || null
+    if (error) {
+      console.error('[useCatatan] fetchOne:', error.message)
+      detailCatatan.value = null
+    } else {
+      detailCatatan.value = data || null
+    }
     loading.value = false
     return data
   }

@@ -24,7 +24,7 @@ export function useAttendance() {
         session_judul: r.sessions?.judul_materi,
         kelompok: r.sessions?.groups?.nama_kelompok
       }))
-      return data
+      return riwayat.value
     } finally {
       loading.value = false
     }

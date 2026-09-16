@@ -21,6 +21,9 @@ export function useQrScanner() {
         scanner.value = new Html5Qrcode(elementId)
       }
 
+      let lastScanTime = 0
+      const SCAN_COOLDOWN_MS = 3000
+
       await scanner.value.start(
         { facingMode: facing },
         {
@@ -29,7 +32,10 @@ export function useQrScanner() {
           aspectRatio: 1
         },
         (decodedText) => {
+          const now = Date.now()
+          if (decodedText === scannedToken.value && now - lastScanTime < SCAN_COOLDOWN_MS) return
           scannedToken.value = decodedText
+          lastScanTime = now
           if (onScan) onScan(decodedText)
         },
         () => {}

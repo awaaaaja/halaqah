@@ -52,10 +52,12 @@ function openEdit(g) {
 async function syncMurabbiGroup(groupId) {
   const newMurabbi = form.value.murabbi_id || null
   if (oldMurabbiId.value && oldMurabbiId.value !== newMurabbi) {
-    await supabase.from('profiles').update({ group_id: null }).eq('id', oldMurabbiId.value).eq('group_id', groupId)
+    const { error } = await supabase.from('profiles').update({ group_id: null }).eq('id', oldMurabbiId.value).eq('group_id', groupId)
+    if (error) throw new Error('Gagal melepas murabbi lama: ' + error.message)
   }
   if (newMurabbi) {
-    await supabase.from('profiles').update({ group_id: groupId }).eq('id', newMurabbi)
+    const { error } = await supabase.from('profiles').update({ group_id: groupId }).eq('id', newMurabbi)
+    if (error) throw new Error('Gagal menetapkan murabbi baru: ' + error.message)
   }
 }
 
