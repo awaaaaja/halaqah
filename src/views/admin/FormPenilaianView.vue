@@ -19,12 +19,13 @@ const selectedUserId = ref(route.params.userId || '')
 const asaActive = ref(null)
 const loading = ref(true)
 const calculating = ref(false)
+const bulkMode = ref(false)
 
 const form = ref({
-  sikap_kedisiplinan: 0,
-  keaktifan: 0,
-  roadmap: 0,
-  posttest: 0,
+  sikap_kedisiplinan: 75,
+  keaktifan: 75,
+  roadmap: 75,
+  posttest: 75,
   catatan_mentor: ''
 })
 
@@ -80,7 +81,7 @@ async function loadExisting() {
     gradeResult.value = getGrade(data.total_nilai || 0)
   } else {
     isEditing.value = false
-    form.value = { sikap_kedisiplinan: 0, keaktifan: 0, roadmap: 0, posttest: 0, catatan_mentor: '' }
+    form.value = { sikap_kedisiplinan: 75, keaktifan: 75, roadmap: 75, posttest: 75, catatan_mentor: '' }
     kehadiran.value = 0
     amalanYaumi.value = 0
     totalNilai.value = 0
@@ -89,6 +90,7 @@ async function loadExisting() {
 }
 
 async function handleSelectUser() {
+  bulkMode.value = false
   await loadExisting()
 }
 
@@ -122,6 +124,40 @@ async function handleCalculateAndSave() {
   }
 }
 
+async function handleBulkApply() {
+  if (!asaActive.value) {
+    appStore.showToast('Tidak ada periode ASA aktif', 'error')
+    return
+  }
+  if (!confirm('Terapkan skor ini ke SEMUA ' + users.value.length + ' anggota?')) return
+
+  calculating.value = true
+  let success = 0
+  let failed = 0
+
+  try {
+    for (const user of users.value) {
+      try {
+        await calculateAuto(user.id, asaActive.value.periode, {
+          sikap_kedisiplinan: form.value.sikap_kedisiplinan,
+          keaktifan: form.value.keaktifan,
+          roadmap: form.value.roadmap,
+          posttest: form.value.posttest,
+          catatan_mentor: form.value.catatan_mentor
+        })
+        success++
+      } catch (e) {
+        console.error('Failed for', user.nama, e.message)
+        failed++
+      }
+    }
+    appStore.showToast('Terapkan ke ' + success + ' anggota' + (failed > 0 ? ', ' + failed + ' gagal' : ''))
+    if (selectedUserId.value) await loadExisting()
+  } finally {
+    calculating.value = false
+  }
+}
+
 function gradeColor(grade) {
   if (grade === 'A') return 'text-emerald-600 bg-emerald-50 border-emerald-200'
   if (grade === 'B') return 'text-blue-600 bg-blue-50 border-blue-200'
@@ -134,10 +170,8 @@ function gradeColor(grade) {
   <div>
     <div class="flex items-center justify-between mb-5">
       <div>
-        <h1 class="text-xl font-bold text-gray-900">{{ isEditing ? 'Edit Penilaian' : 'Form Penilaian ASA' }}</h1>
-        <p class="text-sm text-gray-500 mt-1">
-          {{ asaActive ? asaActive.periode : 'Memuat...' }}
-        </p>
+        <h1 class="text-xl font-bold text-gray-900">Penilaian ASA</h1>
+        <p class="text-sm text-gray-500 mt-1">{{ asaActive ? asaActive.periode : 'Memuat...' }}</p>
       </div>
     </div>
 
@@ -162,35 +196,70 @@ function gradeColor(grade) {
     </div>
 
     <template v-else>
-      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Anggota</label>
-        <select
-          v-model="selectedUserId"
-          @change="handleSelectUser"
-          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+      <!-- Mode Toggle -->
+      <div class="flex gap-2 mb-4">
+        <button
+          @click="bulkMode = false; selectedUserId = ''; loadExisting()"
+          class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+          :class="!bulkMode ? 'bg-emerald-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'"
         >
-          <option value="">-- Pilih Anggota --</option>
-          <option v-for="u in users" :key="u.id" :value="u.id">
-            {{ u.nama }} ({{ u.nim || '-' }})
-          </option>
-        </select>
+          Per Siswa
+        </button>
+        <button
+          @click="bulkMode = true; selectedUserId = ''"
+          class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+          :class="bulkMode ? 'bg-emerald-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'"
+        >
+          Skor Semua ({{ users.length }} siswa)
+        </button>
       </div>
 
-      <div v-if="selectedUser" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
-            {{ (selectedUser.nama || '?')[0] }}
+      <!-- Per Siswa Mode -->
+      <template v-if="!bulkMode">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Pilih Anggota</label>
+          <select
+            v-model="selectedUserId"
+            @change="handleSelectUser"
+            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+          >
+            <option value="">-- Pilih Anggota --</option>
+            <option v-for="u in users" :key="u.id" :value="u.id">
+              {{ u.nama }} ({{ u.nim || '-' }})
+            </option>
+          </select>
+        </div>
+
+        <div v-if="selectedUser" class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
+              {{ (selectedUser.nama || '?')[0] }}
+            </div>
+            <div>
+              <p class="font-medium text-gray-900">{{ selectedUser.nama }}</p>
+              <p class="text-xs text-gray-500">{{ selectedUser.nim || '-' }} · {{ selectedUser.groups?.nama_kelompok || '-' }}</p>
+            </div>
           </div>
+        </div>
+      </template>
+
+      <!-- Bulk Mode Info -->
+      <div v-else class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           <div>
-            <p class="font-medium text-gray-900">{{ selectedUser.nama }}</p>
-            <p class="text-xs text-gray-500">{{ selectedUser.nim || '-' }} · {{ selectedUser.groups?.nama_kelompok || '-' }}</p>
+            <p class="text-sm font-medium text-amber-800">Mode Skor Semua</p>
+            <p class="text-xs text-amber-700 mt-1">Skor yang kamu atur akan diterapkan ke <strong>{{ users.length }} anggota</strong> sekaligus. Setelah itu bisa diubah per siswa jika perlu.</p>
           </div>
         </div>
       </div>
 
-      <div v-if="selectedUserId" class="space-y-4">
+      <!-- Form Input -->
+      <div class="space-y-4">
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <h3 class="text-sm font-bold text-gray-700 mb-3">Input Mentor</h3>
+          <h3 class="text-sm font-bold text-gray-700 mb-3">Skor Komponen</h3>
           <div class="space-y-4">
             <div>
               <div class="flex items-center justify-between mb-1">
@@ -226,24 +295,15 @@ function gradeColor(grade) {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Catatan Mentor</label>
-              <textarea v-model="form.catatan_mentor" rows="3"
+              <textarea v-model="form.catatan_mentor" rows="2"
                 class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 placeholder="Catatan untuk anggota..."></textarea>
             </div>
           </div>
         </div>
 
-        <div class="flex gap-3">
-          <button
-            @click="handleCalculateAndSave"
-            :disabled="calculating"
-            class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 text-sm"
-          >
-            {{ calculating ? 'Menghitung...' : 'Hitung & Simpan' }}
-          </button>
-        </div>
-
-        <div v-if="totalNilai > 0 || kehadiran > 0 || amalanYaumi > 0"
+        <!-- Preview (only in per-siswa mode with data) -->
+        <div v-if="!bulkMode && (totalNilai > 0 || kehadiran > 0 || amalanYaumi > 0)"
           class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <h3 class="text-sm font-bold text-gray-700 mb-3">Preview Nilai</h3>
           <div class="grid grid-cols-2 gap-3 mb-3">
@@ -271,6 +331,28 @@ function gradeColor(grade) {
               <p class="text-sm font-bold">{{ gradeResult.label }}</p>
             </div>
           </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3">
+          <template v-if="bulkMode">
+            <button
+              @click="handleBulkApply"
+              :disabled="calculating"
+              class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 text-sm"
+            >
+              {{ calculating ? 'Menerapkan...' : 'Terapkan ke Semua' }}
+            </button>
+          </template>
+          <template v-else>
+            <button
+              @click="handleCalculateAndSave"
+              :disabled="calculating || !selectedUserId"
+              class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 text-sm"
+            >
+              {{ calculating ? 'Menghitung...' : 'Hitung & Simpan' }}
+            </button>
+          </template>
         </div>
       </div>
     </template>
