@@ -1,0 +1,307 @@
+{
+  "totalExcelRaw": 468,
+  "totalExcelDeduped": 461,
+  "matched": 429,
+  "seeded": 426,
+  "overwritten": 112,
+  "unmatched": [
+    {
+      "nama": "Muhammad Aditya putra",
+      "nim": 26911320001,
+      "prodi": "teknik sipil ",
+      "kelompok": 11,
+      "score": 95
+    },
+    {
+      "nama": "Annisa Tufaillah.A",
+      "nim": 25112220003,
+      "prodi": "Informatika ",
+      "kelompok": 13,
+      "score": 100
+    },
+    {
+      "nama": "LINGLING SEFTRIQDIAN YES",
+      "nim": 26911110076,
+      "prodi": "PGSD",
+      "kelompok": 26,
+      "score": 100
+    },
+    {
+      "nama": "salwa",
+      "nim": 26911110026,
+      "prodi": "pgsd",
+      "kelompok": 30,
+      "score": 95
+    },
+    {
+      "nama": "Ihda asaroh",
+      "nim": 26911110107,
+      "prodi": "S1 PGSD",
+      "kelompok": "kel 20",
+      "score": 100
+    },
+    {
+      "nama": "Latifah nur muk minah",
+      "nim": 26111110027,
+      "prodi": "Pgsd",
+      "kelompok": "Kelompok 24",
+      "score": 100
+    },
+    {
+      "nama": "NEFEL NAZLA USWATUN W",
+      "nim": 26111110048,
+      "prodi": "pgsd",
+      "kelompok": 28,
+      "score": 95
+    },
+    {
+      "nama": "Fadila Muthomainnah",
+      "nim": 26111120007,
+      "prodi": "Pgpaud ",
+      "kelompok": "Kelompok 13",
+      "score": 100
+    },
+    {
+      "nama": "MHD.IHSANUL ZUKRI HSB",
+      "nim": 26111110080,
+      "prodi": "PGSD ",
+      "kelompok": 7,
+      "score": 100
+    },
+    {
+      "nama": "dinda febrianti",
+      "nim": 26911110108,
+      "prodi": "PGSD",
+      "kelompok": 32,
+      "score": 100
+    },
+    {
+      "nama": "Laura jati alfandi",
+      "nim": 26511810001,
+      "prodi": "S1 gizi",
+      "kelompok": "Kelompok 16",
+      "score": 100
+    },
+    {
+      "nama": "Resti Aprlia Zinda",
+      "nim": 26511310002,
+      "prodi": "Teknik Industri",
+      "kelompok": "Kelompok 6",
+      "score": 100
+    },
+    {
+      "nama": "Azzahra Khairunnisa",
+      "nim": 26111110061,
+      "prodi": "S1 PGSD",
+      "kelompok": 2,
+      "score": 100
+    },
+    {
+      "nama": "Kelsi putri Ramadhani",
+      "nim": 26511110056,
+      "prodi": "PGSD ",
+      "kelompok": 1,
+      "score": 100
+    },
+    {
+      "nama": "RakhacAthaghani🥸",
+      "nim": 26111810008,
+      "prodi": "Gizi",
+      "kelompok": 9,
+      "score": 100
+    },
+    {
+      "nama": "Geyana Althafunnisa Aryonny",
+      "nim": 26111110106,
+      "prodi": "PGSD ",
+      "kelompok": 36,
+      "score": 100
+    },
+    {
+      "nama": "VANESSA PERTAMA SARI",
+      "nim": 26911110036,
+      "prodi": "S1 PGSD",
+      "kelompok": 30,
+      "score": 100
+    },
+    {
+      "nama": "MUHAMMAD 'AQIL QUSHOYYI",
+      "nim": 26912210001,
+      "prodi": "Sistem Informasi",
+      "kelompok": "Kelompok 1",
+      "score": 100
+    },
+    {
+      "nama": "Pipin",
+      "nim": 26911110050,
+      "prodi": "PGSD ",
+      "kelompok": 26,
+      "score": 80
+    },
+    {
+      "nama": "Sahar Amelia",
+      "nim": 26911810015,
+      "prodi": "Gizi",
+      "kelompok": 36,
+      "score": 100
+    },
+    {
+      "nama": "M teguh prasetyawan",
+      "nim": 26911110082,
+      "prodi": "Pgsd ",
+      "kelompok": 7,
+      "score": 100
+    },
+    {
+      "nama": "Sakila Fitri Nengsi",
+      "nim": 26911110051,
+      "prodi": "Pgsd",
+      "kelompok": 9,
+      "score": 95
+    },
+    {
+      "nama": "Nurzeli",
+      "nim": 26911110079,
+      "prodi": "PGSD",
+      "kelompok": "Kelompok 9",
+      "score": 100
+    },
+    {
+      "nama": "Keshia Ramadhani",
+      "nim": 26211610002,
+      "prodi": "Manajemen ritel",
+      "kelompok": "36 akhwat ",
+      "score": 100
+    },
+    {
+      "nama": "Nur Aini",
+      "nim": 202630335,
+      "prodi": "pg paud ",
+      "kelompok": 12,
+      "score": 100
+    },
+    {
+      "nama": "Rifa andriani putri",
+      "nim": 26211130003,
+      "prodi": "Pendidikan fisika",
+      "kelompok": 33,
+      "score": 100
+    },
+    {
+      "nama": "SIYI NAVISA",
+      "nim": 26911810007,
+      "prodi": "gizi",
+      "kelompok": "kelompok 4",
+      "score": 100
+    },
+    {
+      "nama": "Aisyah sahri suci rama dani",
+      "nim": 26912210002,
+      "prodi": "Sistem informasi",
+      "kelompok": 18,
+      "score": 100
+    },
+    {
+      "nama": "Hairahazanah",
+      "nim": 26511110001,
+      "prodi": "PGSD ",
+      "kelompok": 7,
+      "score": 80
+    },
+    {
+      "nama": "intantanjung",
+      "nim": 26911110074,
+      "prodi": "Pgsd",
+      "kelompok": 20,
+      "score": 100
+    },
+    {
+      "nama": "Fersan aldio fero",
+      "nim": 26911110130,
+      "prodi": "PGSD",
+      "kelompok": 2,
+      "score": 95
+    },
+    {
+      "nama": "jelsi idris safiri",
+      "nim": 26512210001,
+      "prodi": "sistem informasi",
+      "kelompok": 18,
+      "score": 100
+    }
+  ],
+  "alreadyExistingSkipped": 3,
+  "conflicts": [
+    {
+      "nama": "Julki Ardian Saputra",
+      "nim": "ASA26013",
+      "dbScore": 92,
+      "excelScore": 100,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "AGUNG SANDIA MALIK",
+      "nim": "ASA26018",
+      "dbScore": 97,
+      "excelScore": 100,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Abdul Aziz",
+      "nim": "ASA26008",
+      "dbScore": 96,
+      "excelScore": 95,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Ahmad Qoid Fathulhaq",
+      "nim": "ASA26005",
+      "dbScore": 94,
+      "excelScore": 100,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Rafi Andeski Putra",
+      "nim": "ASA26023",
+      "dbScore": 87,
+      "excelScore": 100,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Muhammad Fakhri NST",
+      "nim": "ASA26001",
+      "dbScore": 97,
+      "excelScore": 100,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Muhammad Gilang",
+      "nim": "ASA26014",
+      "dbScore": 96,
+      "excelScore": 95,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Arifal Yendri",
+      "nim": "ASA26021",
+      "dbScore": 83,
+      "excelScore": 100,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "Daffa Maulana",
+      "nim": "ASA26012",
+      "dbScore": 100,
+      "excelScore": 95,
+      "action": "Overwritten"
+    },
+    {
+      "nama": "AIFIL GABRIEL NAYEF",
+      "nim": "ASA26070",
+      "dbScore": 98,
+      "excelScore": 100,
+      "action": "Overwritten"
+    }
+  ],
+  "failed": 0
+}

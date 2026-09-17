@@ -25,9 +25,10 @@ const form = ref({
   sikap_kedisiplinan: 75,
   keaktifan: 75,
   roadmap: 75,
-  posttest: 75,
   catatan_mentor: ''
 })
+
+const posttestScore = ref(0)
 
 const kehadiran = ref(0)
 const amalanYaumi = ref(0)
@@ -72,16 +73,17 @@ async function loadExisting() {
       sikap_kedisiplinan: data.sikap_kedisiplinan || 0,
       keaktifan: data.keaktifan || 0,
       roadmap: data.roadmap || 0,
-      posttest: data.posttest || 0,
       catatan_mentor: data.catatan_mentor || ''
     }
+    posttestScore.value = data.posttest || 0
     kehadiran.value = data.kehadiran || 0
     amalanYaumi.value = data.amalan_yaumi || 0
     totalNilai.value = data.total_nilai || 0
     gradeResult.value = getGrade(data.total_nilai || 0)
   } else {
     isEditing.value = false
-    form.value = { sikap_kedisiplinan: 75, keaktifan: 75, roadmap: 75, posttest: 75, catatan_mentor: '' }
+    form.value = { sikap_kedisiplinan: 75, keaktifan: 75, roadmap: 75, catatan_mentor: '' }
+    posttestScore.value = 0
     kehadiran.value = 0
     amalanYaumi.value = 0
     totalNilai.value = 0
@@ -105,7 +107,6 @@ async function handleCalculateAndSave() {
       sikap_kedisiplinan: form.value.sikap_kedisiplinan,
       keaktifan: form.value.keaktifan,
       roadmap: form.value.roadmap,
-      posttest: form.value.posttest,
       catatan_mentor: form.value.catatan_mentor
     })
     const data = await getPenilaian(selectedUserId.value, asaActive.value.periode)
@@ -142,7 +143,6 @@ async function handleBulkApply() {
           sikap_kedisiplinan: form.value.sikap_kedisiplinan,
           keaktifan: form.value.keaktifan,
           roadmap: form.value.roadmap,
-          posttest: form.value.posttest,
           catatan_mentor: form.value.catatan_mentor
         })
         success++
@@ -285,13 +285,12 @@ function gradeColor(grade) {
               <input type="range" v-model.number="form.roadmap" min="0" max="100"
                 class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-emerald-600" />
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="text-sm font-medium text-gray-600">Posttest</label>
-                <span class="text-sm font-bold text-emerald-600">{{ form.posttest }}</span>
+            <div class="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-600">Posttest</p>
+                <p class="text-[10px] text-gray-400">Dari hasil Post-Test ASA</p>
               </div>
-              <input type="range" v-model.number="form.posttest" min="0" max="100"
-                class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-emerald-600" />
+              <span class="text-lg font-bold text-gray-800">{{ posttestScore }}</span>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Catatan Mentor</label>
@@ -306,14 +305,18 @@ function gradeColor(grade) {
         <div v-if="!bulkMode && (totalNilai > 0 || kehadiran > 0 || amalanYaumi > 0)"
           class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <h3 class="text-sm font-bold text-gray-700 mb-3">Preview Nilai</h3>
-          <div class="grid grid-cols-2 gap-3 mb-3">
+          <div class="grid grid-cols-3 gap-3 mb-3">
             <div class="bg-gray-50 rounded-xl p-3 text-center">
               <p class="text-lg font-bold text-gray-800">{{ kehadiran }}%</p>
-              <p class="text-[10px] text-gray-500">Kehadiran Sesi (10%)</p>
+              <p class="text-[10px] text-gray-500">Kehadiran (10%)</p>
             </div>
             <div class="bg-gray-50 rounded-xl p-3 text-center">
               <p class="text-lg font-bold text-gray-800">{{ amalanYaumi }}%</p>
-              <p class="text-[10px] text-gray-500">Amalan Yaumi (20%)</p>
+              <p class="text-[10px] text-gray-500">Amalan (20%)</p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3 text-center">
+              <p class="text-lg font-bold text-gray-800">{{ posttestScore }}</p>
+              <p class="text-[10px] text-gray-500">Posttest (10%)</p>
             </div>
           </div>
           <div class="flex items-center justify-between p-3 rounded-xl border-2"
