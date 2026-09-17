@@ -29,6 +29,7 @@ const form = ref({
   catatan_mentor: ''
 })
 
+const posttestScore = ref(0)
 const kehadiran = ref(0)
 const amalanYaumi = ref(0)
 const totalNilai = ref(0)
@@ -75,6 +76,7 @@ async function loadExisting() {
       posttest: data.posttest || 0,
       catatan_mentor: data.catatan_mentor || ''
     }
+    posttestScore.value = data.posttest || 0
     kehadiran.value = data.kehadiran || 0
     amalanYaumi.value = data.amalan_yaumi || 0
     totalNilai.value = data.total_nilai || 0
@@ -82,6 +84,7 @@ async function loadExisting() {
   } else {
     isEditing.value = false
     form.value = { sikap_kedisiplinan: 75, keaktifan: 75, roadmap: 75, posttest: 75, catatan_mentor: '' }
+    posttestScore.value = 75
     kehadiran.value = 0
     amalanYaumi.value = 0
     totalNilai.value = 0
@@ -292,6 +295,7 @@ function gradeColor(grade) {
               </div>
               <input type="range" v-model.number="form.posttest" min="0" max="100"
                 class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-emerald-600" />
+              <p class="text-[10px] text-gray-400 mt-1">Nilai ini berasal dari data Post-Test ASA yang sudah di-seed ke sistem</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Catatan Mentor</label>
