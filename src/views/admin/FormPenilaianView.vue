@@ -11,14 +11,13 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
-const { getAsaActive, getPenilaian, upsertPenilaian, calculateAuto } = usePenilaian()
+const { getAsaActive, getPenilaian, calculateAuto } = usePenilaian()
 
 const adminGroupId = computed(() => authStore.profile?.group_id)
 const users = ref([])
 const selectedUserId = ref(route.params.userId || '')
 const asaActive = ref(null)
 const loading = ref(true)
-const saving = ref(false)
 const calculating = ref(false)
 
 const form = ref({
@@ -93,14 +92,20 @@ async function handleSelectUser() {
   await loadExisting()
 }
 
-async function handleCalculate() {
+async function handleCalculateAndSave() {
   if (!selectedUserId.value || !asaActive.value) {
     appStore.showToast('Pilih anggota terlebih dahulu', 'error')
     return
   }
   calculating.value = true
   try {
-    await calculateAuto(selectedUserId.value, asaActive.value.periode)
+    await calculateAuto(selectedUserId.value, asaActive.value.periode, {
+      sikap_kedisiplinan: form.value.sikap_kedisiplinan,
+      keaktifan: form.value.keaktifan,
+      roadmap: form.value.roadmap,
+      posttest: form.value.posttest,
+      catatan_mentor: form.value.catatan_mentor
+    })
     const data = await getPenilaian(selectedUserId.value, asaActive.value.periode)
     if (data) {
       kehadiran.value = data.kehadiran || 0
@@ -108,32 +113,12 @@ async function handleCalculate() {
       totalNilai.value = data.total_nilai || 0
       gradeResult.value = getGrade(data.total_nilai || 0)
     }
-    appStore.showToast('Kehadiran (per sesi) & Amalan Yaumi dihitung')
+    isEditing.value = true
+    appStore.showToast('Penilaian tersimpan')
   } catch (e) {
     appStore.showToast(e.message, 'error')
   } finally {
     calculating.value = false
-  }
-}
-
-async function handleSave() {
-  if (!selectedUserId.value || !asaActive.value) {
-    appStore.showToast('Pilih anggota terlebih dahulu', 'error')
-    return
-  }
-  saving.value = true
-  try {
-    await upsertPenilaian({
-      user_id: selectedUserId.value,
-      periode: asaActive.value.periode,
-      ...form.value
-    })
-    await handleCalculate()
-    appStore.showToast(isEditing.value ? 'Penilaian diperbarui' : 'Penilaian disimpan')
-  } catch (e) {
-    appStore.showToast(e.message, 'error')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -250,18 +235,11 @@ function gradeColor(grade) {
 
         <div class="flex gap-3">
           <button
-            @click="handleCalculate"
+            @click="handleCalculateAndSave"
             :disabled="calculating"
-            class="flex-1 py-3 border-2 border-emerald-200 text-emerald-700 rounded-xl font-medium hover:bg-emerald-50 transition-all disabled:opacity-50 text-sm"
-          >
-            {{ calculating ? 'Menghitung...' : 'Hitung Otomatis' }}
-          </button>
-          <button
-            @click="handleSave"
-            :disabled="saving"
             class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all disabled:opacity-50 text-sm"
           >
-            {{ saving ? 'Menyimpan...' : 'Simpan' }}
+            {{ calculating ? 'Menghitung...' : 'Hitung & Simpan' }}
           </button>
         </div>
 

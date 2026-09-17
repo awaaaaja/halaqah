@@ -131,11 +131,16 @@ export function usePenilaian() {
     return data
   }
 
-  async function calculateAuto(userId, periode) {
+  async function calculateAuto(userId, periode, manualFields = {}) {
     const { error } = await supabase
       .rpc('calculate_penilaian', {
         p_user_id: userId,
-        p_periode: periode
+        p_periode: periode,
+        p_sikap_kedisiplinan: manualFields.sikap_kedisiplinan ?? null,
+        p_keaktifan: manualFields.keaktifan ?? null,
+        p_roadmap: manualFields.roadmap ?? null,
+        p_posttest: manualFields.posttest ?? null,
+        p_catatan_mentor: manualFields.catatan_mentor ?? null
       })
     if (error) throw error
     const updated = await getPenilaian(userId, periode)
