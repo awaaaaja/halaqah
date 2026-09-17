@@ -1,4 +1,4 @@
-const CACHE_NAME = 'absensi-liqa-v3';
+const CACHE_NAME = 'absensi-liqa-v4';
 
 self.addEventListener('install', () => self.skipWaiting());
 
