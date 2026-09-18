@@ -50,7 +50,7 @@ function getDayScore(day) {
   const dateStr = `${tahun.value}-${String(bulan.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
   const log = monthLogs.value.find(l => l.tanggal === dateStr)
   if (!log) return null
-  if (log.berhalangan) return { score: 0, berhalangan: true }
+  if (log.berhalangan) return { score: 24.5, berhalangan: true }
   return hitungSkorHarian(log)
 }
 

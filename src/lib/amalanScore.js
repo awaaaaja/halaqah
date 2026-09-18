@@ -2,7 +2,7 @@ export const AMALAN_SKOR_MAX = 35
 
 export function hitungSkorHarian(log) {
   if (!log) return 0
-  if (log.berhalangan) return 0
+  if (log.berhalangan) return 24.5 // 70% dari max 35
   let score = 0
   const wajibFields = ['shalat_subuh', 'shalat_dzuhur', 'shalat_ashar', 'shalat_maghrib', 'shalat_isya']
   wajibFields.forEach(f => {
