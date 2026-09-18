@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useAppStore } from '@/stores/appStore'
 import { usePenilaian } from '@/composables/usePenilaian'
-import { getGrade, PENILAIAN_COMPONENTS } from '@/lib/grading'
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
@@ -12,18 +11,6 @@ const { asaSettings, getAsaSettings, getPenilaian } = usePenilaian()
 const selectedPeriode = ref('')
 const penilaianData = ref(null)
 const loading = ref(true)
-
-const gradeResult = computed(() => {
-  if (!penilaianData.value) return { grade: '-', label: '-' }
-  return getGrade(penilaianData.value.total_nilai || 0)
-})
-
-function gradeColor(grade) {
-  if (grade === 'A') return 'text-emerald-600 bg-emerald-50 border-emerald-200'
-  if (grade === 'B') return 'text-blue-600 bg-blue-50 border-blue-200'
-  if (grade === 'C') return 'text-amber-600 bg-amber-50 border-amber-200'
-  return 'text-red-600 bg-red-50 border-red-200'
-}
 
 function progressColor(score) {
   if (score >= 90) return 'bg-emerald-500'
@@ -56,7 +43,7 @@ async function handlePeriodeChange() {
   <div>
     <div class="mb-5">
       <h1 class="text-xl font-bold text-gray-900">Riwayat Penilaian ASA</h1>
-      <p class="text-sm text-gray-500 mt-1">Lihat nilai penilaian Anda</p>
+      <p class="text-sm text-gray-500 mt-1">Lihat kehadiran dan amalan Anda</p>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-500">
@@ -94,44 +81,40 @@ async function handlePeriodeChange() {
       </div>
 
       <template v-else>
-        <div class="bg-white rounded-xl border-2 shadow-sm p-6 mb-5 text-center"
-          :class="gradeColor(gradeResult.grade)">
-          <p class="text-sm font-medium opacity-75 mb-1">Total Nilai</p>
-          <p class="text-5xl font-bold mb-2">{{ penilaianData.total_nilai }}</p>
-          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60">
-            <span class="text-2xl font-bold">{{ gradeResult.grade }}</span>
-            <span class="text-sm font-medium">{{ gradeResult.label }}</span>
-          </div>
-        </div>
-
         <div class="space-y-3">
-          <div
-            v-for="comp in PENILAIAN_COMPONENTS"
-            :key="comp.key"
-            class="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
-          >
+          <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
             <div class="flex items-center justify-between mb-2">
               <div>
-                <p class="font-medium text-gray-800">{{ comp.label }}</p>
-                <p class="text-xs text-gray-400">Bobot {{ comp.bobot }}%{{ comp.auto ? ' · Otomatis' : '' }}</p>
+                <p class="font-medium text-gray-800">Kehadiran</p>
+                <p class="text-xs text-gray-400">Persentase kehadiran sesi</p>
               </div>
-              <p class="text-xl font-bold text-gray-800">
-                {{ penilaianData[comp.key] || 0 }}
-              </p>
+              <p class="text-xl font-bold text-gray-800">{{ penilaianData.kehadiran || 0 }}%</p>
             </div>
             <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
                 class="h-full rounded-full transition-all duration-500"
-                :class="progressColor(penilaianData[comp.key] || 0)"
-                :style="{ width: (penilaianData[comp.key] || 0) + '%' }"
+                :class="progressColor(penilaianData.kehadiran || 0)"
+                :style="{ width: (penilaianData.kehadiran || 0) + '%' }"
               ></div>
             </div>
           </div>
-        </div>
 
-        <div v-if="penilaianData.catatan_mentor" class="mt-4 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <p class="text-sm font-medium text-gray-700 mb-1">Catatan Mentor</p>
-          <p class="text-sm text-gray-600 italic">{{ penilaianData.catatan_mentor }}</p>
+          <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <p class="font-medium text-gray-800">Amal Yaumi</p>
+                <p class="text-xs text-gray-400">Skor ibadah harian</p>
+              </div>
+              <p class="text-xl font-bold text-gray-800">{{ penilaianData.amalan_yaumi || 0 }}%</p>
+            </div>
+            <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                :class="progressColor(penilaianData.amalan_yaumi || 0)"
+                :style="{ width: (penilaianData.amalan_yaumi || 0) + '%' }"
+              ></div>
+            </div>
+          </div>
         </div>
       </template>
     </template>

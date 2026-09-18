@@ -77,10 +77,11 @@ export function usePenilaian() {
     if (error) throw error
   }
 
+  // ponytail: user view — only safe columns (kehadiran + amalan_yaumi)
   async function getPenilaian(userId, periode) {
     const { data, error } = await supabase
       .from('penilaian_asa')
-      .select('*')
+      .select('user_id, periode, kehadiran, amalan_yaumi')
       .eq('user_id', userId)
       .eq('periode', periode)
       .maybeSingle()
@@ -89,6 +90,21 @@ export function usePenilaian() {
       return null
     }
     penilaian.value = data
+    return data
+  }
+
+  // Admin view — all columns
+  async function getPenilaianFull(userId, periode) {
+    const { data, error } = await supabase
+      .from('penilaian_asa')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('periode', periode)
+      .maybeSingle()
+    if (error) {
+      console.error('[usePenilaian] getPenilaianFull:', error.message)
+      return null
+    }
     return data
   }
 
@@ -143,7 +159,7 @@ export function usePenilaian() {
         p_catatan_mentor: manualFields.catatan_mentor ?? null
       })
     if (error) throw error
-    const updated = await getPenilaian(userId, periode)
+    const updated = await getPenilaianFull(userId, periode)
     return updated
   }
 
@@ -151,6 +167,6 @@ export function usePenilaian() {
     loading, asaSettings, penilaian, penilaianList,
     getAsaSettings, getAsaActive, createAsaSettings, updateAsaSettings,
     setActiveAsaSettings, deleteAsaSettings,
-    getPenilaian, getPenilaianBatch, upsertPenilaian, calculateAuto
+    getPenilaian, getPenilaianFull, getPenilaianBatch, upsertPenilaian, calculateAuto
   }
 }

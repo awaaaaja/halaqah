@@ -11,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
-const { getAsaActive, getPenilaian, calculateAuto } = usePenilaian()
+const { getAsaActive, getPenilaianFull, calculateAuto } = usePenilaian()
 
 const adminGroupId = computed(() => authStore.profile?.group_id)
 const users = ref([])
@@ -66,7 +66,7 @@ onMounted(async () => {
 
 async function loadExisting() {
   if (!selectedUserId.value || !asaActive.value) return
-  const data = await getPenilaian(selectedUserId.value, asaActive.value.periode)
+  const data = await getPenilaianFull(selectedUserId.value, asaActive.value.periode)
   if (data) {
     isEditing.value = true
     form.value = {
@@ -111,7 +111,7 @@ async function handleCalculateAndSave() {
       posttest: form.value.posttest,
       catatan_mentor: form.value.catatan_mentor
     })
-    const data = await getPenilaian(selectedUserId.value, asaActive.value.periode)
+  const data = await getPenilaianFull(selectedUserId.value, asaActive.value.periode)
     if (data) {
       kehadiran.value = data.kehadiran || 0
       amalanYaumi.value = data.amalan_yaumi || 0
